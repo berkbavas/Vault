@@ -28,7 +28,7 @@
 
         <div id="alert-container"></div>
 
-        <form id="login-form" style="margin-top: 8px">
+        <form id="login-form">
             <div class="form-stack">
                 <div class="input-group">
                     <i class="fa-solid fa-user"></i>

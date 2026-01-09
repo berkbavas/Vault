@@ -311,15 +311,15 @@ body.dark-theme .brand-logo {
     transition: width 0.3s ease, background-color 0.3s ease;
 }
 
-.password-meter-bar.weak {
+.password-meter-fill.weak {
     background: #ef4444;
 }
 
-.password-meter-bar.medium {
+.password-meter-fill.medium {
     background: #f59e0b;
 }
 
-.password-meter-bar.strong {
+.password-meter-fill.strong {
     background: #10b981;
 }
 

@@ -10,7 +10,6 @@ const CryptoUtils = {
     SALT_SIZE: 32,
     IV_SIZE: 12,
     KEY_SIZE: 256,
-    CHUNK_SIZE: 1024 * 1024, // 1MB
 
     /**
      * Generate random bytes
@@ -315,63 +314,5 @@ const CryptoUtils = {
 
     clearMasterKeyFromSession() {
         sessionStorage.removeItem('masterKey');
-    },
-
-    /**
-     * Convert hex string to Uint8Array
-     */
-    hexToBytes(hex) {
-        const bytes = new Uint8Array(hex.length / 2);
-        for (let i = 0; i < hex.length; i += 2) {
-            bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
-        }
-        return bytes;
-    },
-
-    /**
-     * Convert Uint8Array to hex string
-     */
-    bytesToHex(bytes) {
-        return Array.from(bytes)
-            .map(b => b.toString(16).padStart(2, '0'))
-            .join('');
-    },
-
-    /**
-     * Derive password hash for authentication
-     * This is the hash sent to the server for authentication
-     */
-    async derivePasswordHash(password, clientSalt) {
-        const enc = new TextEncoder();
-        const passwordBuffer = enc.encode(password);
-        
-        const keyMaterial = await crypto.subtle.importKey(
-            'raw',
-            passwordBuffer,
-            'PBKDF2',
-            false,
-            ['deriveBits']
-        );
-
-        const derivedBits = await crypto.subtle.deriveBits(
-            {
-                name: 'PBKDF2',
-                salt: clientSalt,
-                iterations: this.PBKDF2_ITERATIONS_HASH,
-                hash: 'SHA-256'
-            },
-            keyMaterial,
-            this.KEY_SIZE
-        );
-
-        return new Uint8Array(derivedBits);
-    },
-
-    /**
-     * Derive KEK (Key Encryption Key) from password
-     * This is used to encrypt/decrypt the master key
-     */
-    async deriveKEK(password, kdfSalt) {
-        return await this.deriveKey(password, kdfSalt);
     }
 };

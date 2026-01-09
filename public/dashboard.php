@@ -197,7 +197,6 @@
             </div>
             <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
                 <div class="form-group">
-                    <label for="currentPasswordInput">Current Password</label>
                     <div class="input-group">
                         <span class="input-icon">
                             <i class="fa-solid fa-lock"></i>
@@ -210,7 +209,6 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="newPasswordInput">New Password</label>
                     <div class="input-group">
                         <span class="input-icon">
                             <i class="fa-solid fa-key"></i>
@@ -220,14 +218,9 @@
                             <i class="fa-solid fa-eye"></i>
                         </button>
                     </div>
-                    <div class="password-meter" id="passwordMeterChange">
-                        <div class="password-meter-bar" id="passwordMeterBarChange"></div>
-                    </div>
-                    <small class="password-hint" id="passwordStrengthChange"></small>
                 </div>
 
                 <div class="form-group">
-                    <label for="confirmPasswordInput">Confirm New Password</label>
                     <div class="input-group">
                         <span class="input-icon">
                             <i class="fa-solid fa-key"></i>

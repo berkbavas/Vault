@@ -144,39 +144,6 @@ function displayQuota() {
     }
 }
 
-function xhrUpload(url, formData, { onProgress } = {}) {
-    return new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', url, true);
-        xhr.responseType = 'text';
-
-        // Add Authorization header
-        const token = getAuthToken();
-        if (token) {
-            xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-        }
-
-        xhr.upload.addEventListener('progress', (e) => {
-            if (!onProgress) return;
-            if (e.lengthComputable) onProgress(e.loaded, e.total);
-        });
-
-        xhr.onerror = () => reject(new Error('Network error during upload'));
-
-        xhr.onload = () => {
-            try {
-                const text = xhr.responseText || '';
-                const json = text ? JSON.parse(text) : null;
-                resolve({ status: xhr.status, json });
-            } catch (err) {
-                reject(new Error('Invalid server response'));
-            }
-        };
-
-        xhr.send(formData);
-    });
-}
-
 function setupEventListeners() {
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('file-input');
@@ -1349,13 +1316,6 @@ function showChangePasswordModal() {
     document.getElementById('currentPasswordInput').value = '';
     document.getElementById('newPasswordInput').value = '';
     document.getElementById('confirmPasswordInput').value = '';
-    document.getElementById('passwordMeterBarChange').style.width = '0%';
-    document.getElementById('passwordMeterBarChange').className = 'password-meter-bar';
-    document.getElementById('passwordStrengthChange').textContent = '';
-    
-    // Add password strength checker
-    const newPasswordInput = document.getElementById('newPasswordInput');
-    newPasswordInput.addEventListener('input', checkPasswordStrengthDashboard);
 }
 
 function togglePasswordVisibility(inputId) {
@@ -1370,37 +1330,6 @@ function togglePasswordVisibility(inputId) {
         input.type = 'password';
         button.classList.remove('fa-eye-slash');
         button.classList.add('fa-eye');
-    }
-}
-
-function checkPasswordStrengthDashboard() {
-    const password = document.getElementById('newPasswordInput').value;
-    const meter = document.getElementById('passwordMeterBarChange');
-    const strengthText = document.getElementById('passwordStrengthChange');
-    
-    let strength = 0;
-    
-    if (password.length >= 8) strength++;
-    if (password.length >= 12) strength++;
-    if (/[a-z]/.test(password) && /[A-Z]/.test(password)) strength++;
-    if (/\d/.test(password)) strength++;
-    if (/[^a-zA-Z0-9]/.test(password)) strength++;
-    
-    const percentage = (strength / 5) * 100;
-    meter.style.width = percentage + '%';
-    
-    if (strength <= 1) {
-        meter.className = 'password-meter-bar weak';
-        strengthText.textContent = 'Weak password';
-        strengthText.style.color = '#ef4444';
-    } else if (strength <= 3) {
-        meter.className = 'password-meter-bar medium';
-        strengthText.textContent = 'Medium strength';
-        strengthText.style.color = '#f59e0b';
-    } else {
-        meter.className = 'password-meter-bar strong';
-        strengthText.textContent = 'Strong password';
-        strengthText.style.color = '#10b981';
     }
 }
 
@@ -1445,13 +1374,13 @@ async function handleChangePassword(e) {
         const currentClientSalt = userData.client_salt;
         
         // Derive current password hash to verify
-        const currentClientSaltBytes = CryptoUtils.hexToBytes(currentClientSalt);
-        const currentPasswordHash = await CryptoUtils.derivePasswordHash(currentPassword, currentClientSaltBytes);
-        const currentPasswordHashHex = CryptoUtils.bytesToHex(currentPasswordHash);
+        const currentClientSaltBytes = CryptoUtils.hexToArrayBuffer(currentClientSalt);
+        const currentPasswordHash = await CryptoUtils.hashPassword(currentPassword, currentClientSaltBytes);
+        const currentPasswordHashHex = CryptoUtils.arrayBufferToHex(currentPasswordHash);
         
         // Decrypt master key with current password to verify it works
-        const currentKdfSaltBytes = CryptoUtils.hexToBytes(currentKdfSalt);
-        const currentKek = await CryptoUtils.deriveKEK(currentPassword, currentKdfSaltBytes);
+        const currentKdfSaltBytes = CryptoUtils.hexToArrayBuffer(currentKdfSalt);
+        const currentKek = await CryptoUtils.deriveKey(currentPassword, currentKdfSaltBytes);
         let masterKeyHex;
         try {
             masterKeyHex = await CryptoUtils.decryptMasterKey(currentEncryptedMasterKey, currentKek);
@@ -1467,11 +1396,11 @@ async function handleChangePassword(e) {
         const newKdfSalt = crypto.getRandomValues(new Uint8Array(32));
         
         // Derive new password hash
-        const newPasswordHash = await CryptoUtils.derivePasswordHash(newPassword, newClientSalt);
-        const newPasswordHashHex = CryptoUtils.bytesToHex(newPasswordHash);
+        const newPasswordHash = await CryptoUtils.hashPassword(newPassword, newClientSalt);
+        const newPasswordHashHex = CryptoUtils.arrayBufferToHex(newPasswordHash);
         
         // Re-encrypt master key with new password
-        const newKek = await CryptoUtils.deriveKEK(newPassword, newKdfSalt);
+        const newKek = await CryptoUtils.deriveKey(newPassword, newKdfSalt);
         const newEncryptedMasterKey = await CryptoUtils.encryptMasterKey(masterKeyForReEncryption, newKek);
         
         // Call change password API
