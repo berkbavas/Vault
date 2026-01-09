@@ -16,6 +16,15 @@ let masterKey = null;
 document.addEventListener('DOMContentLoaded', async function () {
     API.init();
     masterKey = await CryptoUtils.getMasterKeyFromSession();
+
+    const response = await API.auth.me();
+
+    if (!masterKey || !response.success) {
+        sessionStorage.clear();
+        window.location.href = 'login.php';
+        return;
+    }
+
     loadFiles();
     loadQuota();
     setupEventListeners();
@@ -229,7 +238,7 @@ async function uploadFiles(files) {
         }
 
         showUploadProgress({ filename: file.name, percent: 0, sub: 'Encrypting…' });
-        
+
         try {
             // Read file as ArrayBuffer
             const fileBuffer = await file.arrayBuffer();
@@ -244,7 +253,7 @@ async function uploadFiles(files) {
             const encryptedBlob = new Blob([encryptedFileBuffer], { type: 'application/octet-stream' });
 
             updateUploadProgress(0, 'Uploading…');
-            
+
             // Use chunked upload for files larger than 5MB
             const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
             const USE_CHUNKED_UPLOAD = encryptedBlob.size > 5 * 1024 * 1024;
@@ -993,7 +1002,7 @@ async function moveItem() {
 
     try {
         const response = await API.files.move(selectedItem.id, moveDestinationId);
-        
+
         if (response.success) {
             showNotification('Item moved successfully', 'success');
             closeModal('moveModal');
@@ -1321,7 +1330,7 @@ function showChangePasswordModal() {
 function togglePasswordVisibility(inputId) {
     const input = document.getElementById(inputId);
     const button = input.parentElement.querySelector('.toggle-password i');
-    
+
     if (input.type === 'password') {
         input.type = 'text';
         button.classList.remove('fa-eye');
@@ -1335,49 +1344,49 @@ function togglePasswordVisibility(inputId) {
 
 async function handleChangePassword(e) {
     e.preventDefault();
-    
+
     const currentPassword = document.getElementById('currentPasswordInput').value;
     const newPassword = document.getElementById('newPasswordInput').value;
     const confirmPassword = document.getElementById('confirmPasswordInput').value;
     const submitBtn = document.getElementById('changePasswordBtn');
-    
+
     // Validation
     if (!currentPassword || !newPassword || !confirmPassword) {
         showNotification('Please fill in all fields', 'error');
         return;
     }
-    
+
     if (newPassword !== confirmPassword) {
         showNotification('New passwords do not match', 'error');
         return;
     }
-    
+
     if (currentPassword === newPassword) {
         showNotification('New password must be different from current password', 'error');
         return;
     }
-    
+
     try {
         submitBtn.disabled = true;
         submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Changing Password...';
-        
+
         // Get current user data
         const userResponse = await API.auth.me();
         if (!userResponse.success) {
             throw new Error('Failed to retrieve user data');
         }
-        
+
         const userData = userResponse.data;
         const username = userData.username;
         const currentKdfSalt = userData.kdf_salt;
         const currentEncryptedMasterKey = userData.encrypted_master_key;
         const currentClientSalt = userData.client_salt;
-        
+
         // Derive current password hash to verify
         const currentClientSaltBytes = CryptoUtils.hexToArrayBuffer(currentClientSalt);
         const currentPasswordHash = await CryptoUtils.hashPassword(currentPassword, currentClientSaltBytes);
         const currentPasswordHashHex = CryptoUtils.arrayBufferToHex(currentPasswordHash);
-        
+
         // Decrypt master key with current password to verify it works
         const currentKdfSaltBytes = CryptoUtils.hexToArrayBuffer(currentKdfSalt);
         const currentKek = await CryptoUtils.deriveKey(currentPassword, currentKdfSaltBytes);
@@ -1387,22 +1396,22 @@ async function handleChangePassword(e) {
         } catch (error) {
             throw new Error('Current password is incorrect');
         }
-        
+
         // Import master key
         const masterKeyForReEncryption = await CryptoUtils.importMasterKey(masterKeyHex);
-        
+
         // Generate new salts
         const newClientSalt = crypto.getRandomValues(new Uint8Array(32));
         const newKdfSalt = crypto.getRandomValues(new Uint8Array(32));
-        
+
         // Derive new password hash
         const newPasswordHash = await CryptoUtils.hashPassword(newPassword, newClientSalt);
         const newPasswordHashHex = CryptoUtils.arrayBufferToHex(newPasswordHash);
-        
+
         // Re-encrypt master key with new password
         const newKek = await CryptoUtils.deriveKey(newPassword, newKdfSalt);
         const newEncryptedMasterKey = await CryptoUtils.encryptMasterKey(masterKeyForReEncryption, newKek);
-        
+
         // Call change password API
         const response = await API.auth.changePassword(
             currentPasswordHashHex,
@@ -1411,10 +1420,10 @@ async function handleChangePassword(e) {
             CryptoUtils.bytesToHex(newKdfSalt),
             newEncryptedMasterKey
         );
-        
+
         if (response.success) {
             showNotification('Password changed successfully! Redirecting to login...', 'success');
-            
+
             // Clear session and redirect to login
             setTimeout(() => {
                 sessionStorage.clear();
@@ -1423,7 +1432,7 @@ async function handleChangePassword(e) {
         } else {
             throw new Error(response.message || 'Failed to change password');
         }
-        
+
     } catch (error) {
         console.error('Change password error:', error);
         showNotification(error.message || 'Failed to change password', 'error');

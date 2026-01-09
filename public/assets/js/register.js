@@ -1,5 +1,12 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     API.init();
+
+    const response = await API.auth.me();
+
+    if (response.success) {
+        window.location.href = 'dashboard.php';
+        return;
+    }
 
     const form = document.getElementById('signup-form');
     const username = document.getElementById('username');

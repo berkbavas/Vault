@@ -292,11 +292,11 @@ const CryptoUtils = {
         const enc = new TextEncoder();
         const filenameBuffer = enc.encode(filename);
         const encryptedBuffer = await this.encrypt(filenameBuffer, masterKey);
-        return this.arrayBufferToBase64(encryptedBuffer);
+        return this.arrayBufferToHex(encryptedBuffer);
     },
 
-    async decryptFilename(encryptedFilenameBase64, masterKey) {
-        const encryptedBuffer = this.base64ToArrayBuffer(encryptedFilenameBase64);
+    async decryptFilename(encryptedFilenameHex, masterKey) {
+        const encryptedBuffer = this.hexToArrayBuffer(encryptedFilenameHex);
         const decryptedBuffer = await this.decrypt(encryptedBuffer, masterKey);
         const dec = new TextDecoder();
         return dec.decode(decryptedBuffer);
