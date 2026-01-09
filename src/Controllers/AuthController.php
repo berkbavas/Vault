@@ -22,6 +22,11 @@ class AuthController extends Controller
     public function register()
     {
         try {
+            // Check allow_registration config
+            if (!$this->config['user']['allow_registration']) {
+                return $this->error('User registration is disabled', 403)->send();
+            }
+
             $minUsernameLength = $this->config['user']['username_min_length'];
             $maxUsernameLength = $this->config['user']['username_max_length'];
 
