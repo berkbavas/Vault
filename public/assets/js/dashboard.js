@@ -442,12 +442,6 @@ async function displayFiles(files) {
     }
     else {
         container.innerHTML = `
-                    <div class="files-toolbar">
-                        <div class="select-all-wrapper">
-                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)">
-                            <label for="selectAll">Select All</label>
-                        </div>
-                    </div>
                     <div class="file-grid">
                         ${filteredFiles.map(file => createFileCard(file)).join('')}
                     </div>
@@ -455,7 +449,9 @@ async function displayFiles(files) {
                         <table class="file-table">
                             <thead>
                                 <tr>
-                                    <th class="file-checkbox-header"></th>
+                                    <th class="file-checkbox-header">
+                                        <input type="checkbox" id="selectAll" onchange="toggleSelectAll(this.checked)" title="Select All">
+                                    </th>
                                     <th class="file-icon-header"></th>
                                     <th class="file-name">Name</th>
                                     <th>Size</th>
