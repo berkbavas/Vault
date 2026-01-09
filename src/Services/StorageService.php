@@ -265,4 +265,155 @@ class StorageService
         ];
     }
 
+    /**
+     * Upload a chunk of a file
+     */
+    public function uploadChunk($userId, $uploadId, $chunkIndex, $chunkData)
+    {
+        // Get user folder
+        $stmt = $this->pdo->prepare("SELECT user_folder FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$user || !$user['user_folder']) {
+            throw new Exception('User folder not found');
+        }
+
+        $userFolder = $user['user_folder'];
+        $chunksDir = $this->uploadDir . '/' . $userFolder . '/chunks/' . $uploadId;
+
+        // Create chunks directory if it doesn't exist
+        if (!file_exists($chunksDir)) {
+            mkdir($chunksDir, 0755, true);
+        }
+
+        // Save chunk to disk
+        $chunkPath = $chunksDir . '/' . $chunkIndex;
+        if (file_put_contents($chunkPath, $chunkData) === false) {
+            throw new Exception('Failed to save chunk');
+        }
+
+        // Update metadata.json
+        $metadataPath = $chunksDir . '/metadata.json';
+        $metadata = [];
+        
+        if (file_exists($metadataPath)) {
+            $metadataContent = file_get_contents($metadataPath);
+            $metadata = json_decode($metadataContent, true) ?? [];
+        }
+
+        if (!isset($metadata['chunks'])) {
+            $metadata['chunks'] = [];
+        }
+
+        $metadata['chunks'][$chunkIndex] = [
+            'index' => $chunkIndex,
+            'size' => strlen($chunkData),
+            'uploaded_at' => date('Y-m-d H:i:s')
+        ];
+
+        $metadata['last_updated'] = date('Y-m-d H:i:s');
+
+        if (file_put_contents($metadataPath, json_encode($metadata, JSON_PRETTY_PRINT)) === false) {
+            throw new Exception('Failed to update metadata');
+        }
+
+        return [
+            'chunk_index' => $chunkIndex,
+            'saved' => true
+        ];
+    }
+
+    /**
+     * Finalize chunked upload by merging all chunks
+     */
+    public function finalizeChunkedUpload($userId, $uploadId, $parentId, $encryptedName, $originalSize, $totalChunks)
+    {
+        // Get user folder
+        $stmt = $this->pdo->prepare("SELECT user_folder FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$user || !$user['user_folder']) {
+            throw new Exception('User folder not found');
+        }
+
+        $userFolder = $user['user_folder'];
+        $chunksDir = $this->uploadDir . '/' . $userFolder . '/chunks/' . $uploadId;
+        $uploadPath = $this->uploadDir . '/' . $userFolder;
+
+        // Verify all chunks exist
+        for ($i = 0; $i < $totalChunks; $i++) {
+            $chunkPath = $chunksDir . '/' . $i;
+            if (!file_exists($chunkPath)) {
+                throw new Exception("Missing chunk: $i");
+            }
+        }
+
+        // Generate unique filename for final file
+        $filename = uniqid() . '.enc';
+        $finalPath = $uploadPath . '/' . $filename;
+
+        // Merge chunks
+        $finalFile = fopen($finalPath, 'wb');
+        if (!$finalFile) {
+            throw new Exception('Failed to create final file');
+        }
+
+        for ($i = 0; $i < $totalChunks; $i++) {
+            $chunkPath = $chunksDir . '/' . $i;
+            $chunkData = file_get_contents($chunkPath);
+            fwrite($finalFile, $chunkData);
+        }
+
+        fclose($finalFile);
+
+        $fileSize = filesize($finalPath);
+
+        // Insert into database
+        $stmt = $this->pdo->prepare("
+            INSERT INTO files (user_id, parent_id, encrypted_name, type, path, size, original_size, mime_type) 
+            VALUES (?, ?, ?, 'file', ?, ?, ?, 'application/octet-stream')
+        ");
+        $stmt->execute([$userId, $parentId, $encryptedName, $filename, $fileSize, $originalSize]);
+
+        $fileId = $this->pdo->lastInsertId();
+
+        // Update user storage
+        $stmt = $this->pdo->prepare("UPDATE users SET storage_used = storage_used + ? WHERE id = ?");
+        $stmt->execute([$fileSize, $userId]);
+
+        // Clean up chunks directory
+        $this->deleteChunksDirectory($chunksDir);
+
+        return [
+            'id' => $fileId,
+            'encrypted_name' => $encryptedName,
+            'size' => $fileSize,
+            'original_size' => $originalSize,
+            'type' => 'file'
+        ];
+    }
+
+    /**
+     * Delete chunks directory and its contents
+     */
+    private function deleteChunksDirectory($dir)
+    {
+        if (!is_dir($dir)) {
+            return;
+        }
+
+        $files = array_diff(scandir($dir), ['.', '..']);
+        foreach ($files as $file) {
+            $path = $dir . '/' . $file;
+            if (is_dir($path)) {
+                $this->deleteChunksDirectory($path);
+            } else {
+                unlink($path);
+            }
+        }
+        rmdir($dir);
+    }
+
 }

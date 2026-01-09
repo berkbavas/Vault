@@ -211,6 +211,58 @@ const API = {
                     parent_id: parentId
                 })
             });
+        },
+
+        /**
+         * Upload a chunk of a file
+         */
+        async uploadChunk(uploadId, chunkIndex, chunkBlob, onProgress = null) {
+            const formData = new FormData();
+            formData.append('chunk', chunkBlob);
+            formData.append('upload_id', uploadId);
+            formData.append('chunk_index', chunkIndex);
+
+            return new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                
+                xhr.upload.addEventListener('progress', (e) => {
+                    if (e.lengthComputable && onProgress) {
+                        onProgress(e.loaded, e.total);
+                    }
+                });
+                
+                xhr.addEventListener('load', () => {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        resolve(response);
+                    } catch (e) {
+                        reject(new Error('Invalid response from server'));
+                    }
+                });
+                
+                xhr.addEventListener('error', () => reject(new Error('Chunk upload failed')));
+                xhr.addEventListener('abort', () => reject(new Error('Chunk upload aborted')));
+                
+                xhr.open('POST', `${API.baseURL}/file/upload_chunk.php`);
+                xhr.setRequestHeader('Authorization', `Bearer ${API.token}`);
+                xhr.send(formData);
+            });
+        },
+
+        /**
+         * Finalize chunked upload
+         */
+        async finalizeUpload(uploadId, encryptedName, originalSize, totalChunks, parentId = null) {
+            return await API.request('/file/finalize_upload.php', {
+                method: 'POST',
+                body: JSON.stringify({
+                    upload_id: uploadId,
+                    encrypted_name: encryptedName,
+                    original_size: originalSize,
+                    total_chunks: totalChunks,
+                    parent_id: parentId
+                })
+            });
         }
     },
 };

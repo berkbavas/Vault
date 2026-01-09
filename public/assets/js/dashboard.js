@@ -278,22 +278,45 @@ async function uploadFiles(files) {
 
             updateUploadProgress(0, 'Uploading…');
             
-            const response = await API.files.upload(
-                encryptedBlob,
-                encryptedFilename,
-                file.size,
-                currentFolderId,
-                (loaded, total) => {
-                    const percent = (loaded / total) * 100;
-                    updateUploadProgress(percent, 'Uploading…');
-                }
-            );
+            // Use chunked upload for files larger than 5MB
+            const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+            const USE_CHUNKED_UPLOAD = encryptedBlob.size > 5 * 1024 * 1024;
 
-            if (response.success) {
-                updateUploadProgress(100, 'Done');
-                showNotification('File uploaded successfully: ' + file.name, 'success');
+            if (USE_CHUNKED_UPLOAD) {
+                // Upload using chunks
+                const response = await uploadFileInChunks(
+                    encryptedBlob,
+                    encryptedFilename,
+                    file.size,
+                    currentFolderId,
+                    CHUNK_SIZE
+                );
+
+                if (response.success) {
+                    updateUploadProgress(100, 'Done');
+                    showNotification('File uploaded successfully: ' + file.name, 'success');
+                } else {
+                    showNotification('Upload failed: ' + (response.message || 'Unknown error'), 'error');
+                }
             } else {
-                showNotification('Upload failed: ' + (response.message || 'Unknown error'), 'error');
+                // Standard upload for small files
+                const response = await API.files.upload(
+                    encryptedBlob,
+                    encryptedFilename,
+                    file.size,
+                    currentFolderId,
+                    (loaded, total) => {
+                        const percent = (loaded / total) * 100;
+                        updateUploadProgress(percent, 'Uploading…');
+                    }
+                );
+
+                if (response.success) {
+                    updateUploadProgress(100, 'Done');
+                    showNotification('File uploaded successfully: ' + file.name, 'success');
+                } else {
+                    showNotification('Upload failed: ' + (response.message || 'Unknown error'), 'error');
+                }
             }
         } catch (error) {
             console.error('Upload error:', error);
@@ -304,6 +327,66 @@ async function uploadFiles(files) {
     setTimeout(hideUploadProgress, 1000);
     loadFiles();
     loadQuota();
+}
+
+/**
+ * Upload a file in chunks
+ */
+async function uploadFileInChunks(encryptedBlob, encryptedFilename, originalSize, parentId, chunkSize) {
+    const uploadId = generateUploadId();
+    const totalSize = encryptedBlob.size;
+    const totalChunks = Math.ceil(totalSize / chunkSize);
+
+    let uploadedBytes = 0;
+
+    for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+        const start = chunkIndex * chunkSize;
+        const end = Math.min(start + chunkSize, totalSize);
+        const chunkBlob = encryptedBlob.slice(start, end);
+
+        updateUploadProgress(
+            (uploadedBytes / totalSize) * 100,
+            `Uploading chunk ${chunkIndex + 1}/${totalChunks}…`
+        );
+
+        const response = await API.files.uploadChunk(
+            uploadId,
+            chunkIndex,
+            chunkBlob,
+            (loaded, total) => {
+                const chunkProgress = (uploadedBytes + loaded) / totalSize * 100;
+                updateUploadProgress(
+                    chunkProgress,
+                    `Uploading chunk ${chunkIndex + 1}/${totalChunks}…`
+                );
+            }
+        );
+
+        if (!response.success) {
+            throw new Error(response.message || 'Chunk upload failed');
+        }
+
+        uploadedBytes += chunkBlob.size;
+    }
+
+    // Finalize upload
+    updateUploadProgress(100, 'Finalizing…');
+    const finalizeResponse = await API.files.finalizeUpload(
+        uploadId,
+        encryptedFilename,
+        originalSize,
+        totalChunks,
+        parentId
+    );
+
+    return finalizeResponse;
+}
+
+/**
+ * Generate a unique upload ID
+ */
+function generateUploadId() {
+    return 'upload_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 }
 
 async function loadFiles() {

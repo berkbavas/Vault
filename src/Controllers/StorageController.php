@@ -172,4 +172,71 @@ class StorageController extends Controller
             return $this->error($e->getMessage(), 404)->send();
         }
     }
+
+    /**
+     * Upload a chunk of a file
+     */
+    public function uploadChunk()
+    {
+        try {
+            $userId = $this->requireAuth();
+
+            if (!isset($_FILES['chunk']) || $_FILES['chunk']['error'] !== UPLOAD_ERR_OK) {
+                return $this->error('Chunk upload failed', 400)->send();
+            }
+
+            $uploadId = $_POST['upload_id'] ?? '';
+            $chunkIndex = $_POST['chunk_index'] ?? '';
+
+            if (empty($uploadId) || $chunkIndex === '') {
+                return $this->error('Upload ID and chunk index are required', 400)->send();
+            }
+
+            // Read chunk data
+            $chunkData = file_get_contents($_FILES['chunk']['tmp_name']);
+
+            $result = $this->storageService->uploadChunk($userId, $uploadId, $chunkIndex, $chunkData);
+
+            return $this->success($result, 'Chunk uploaded successfully')->send();
+        } catch (Exception $e) {
+            return $this->error($e->getMessage(), 500)->send();
+        }
+    }
+
+    /**
+     * Finalize chunked upload
+     */
+    public function finalizeUpload()
+    {
+        try {
+            $userId = $this->requireAuth();
+
+            $this->validate([
+                'upload_id' => 'required',
+                'encrypted_name' => 'required|max:255',
+                'total_chunks' => 'required'
+            ]);
+
+            $uploadId = $this->request->json('upload_id');
+            $encryptedName = $this->request->json('encrypted_name');
+            $parentId = $this->request->json('parent_id');
+            $originalSize = $this->request->json('original_size', 0);
+            $totalChunks = $this->request->json('total_chunks');
+
+            $fileData = $this->storageService->finalizeChunkedUpload(
+                $userId, 
+                $uploadId, 
+                $parentId, 
+                $encryptedName, 
+                $originalSize, 
+                $totalChunks
+            );
+
+            return $this->success([
+                'file' => $fileData
+            ], 'File uploaded successfully')->send();
+        } catch (Exception $e) {
+            return $this->error($e->getMessage(), 500)->send();
+        }
+    }
 }
