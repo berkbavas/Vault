@@ -25,10 +25,10 @@
             </div>
 
             <div class="topbar-actions">
-                <a href="change_password.php" class="btn btn-ghost" title="Change Password">
+                <button class="btn btn-ghost" onclick="showChangePasswordModal()" title="Change Password" type="button">
                     <i class="fa-solid fa-key"></i>
                     Change Password
-                </a>
+                </button>
 
                 <a href="logout.php" class="btn btn-ghost" title="Logout">
                     <i class="fa-solid fa-right-from-bracket"></i>
@@ -185,6 +185,65 @@
                 <button class="btn btn-secondary" onclick="closeModal('moveModal')" type="button">Cancel</button>
                 <button class="btn btn-success" onclick="moveItem()" type="button">Move</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal" id="changePasswordModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4>Change Password</h4>
+                <button class="close" onclick="closeModal('changePasswordModal')"><i class="fa-regular fa-circle-xmark"></i></button>
+            </div>
+            <form id="changePasswordForm" onsubmit="handleChangePassword(event)">
+                <div class="form-group">
+                    <label for="currentPasswordInput">Current Password</label>
+                    <div class="input-group">
+                        <span class="input-icon">
+                            <i class="fa-solid fa-lock"></i>
+                        </span>
+                        <input type="password" id="currentPasswordInput" placeholder="Enter current password" required>
+                        <button type="button" class="toggle-password" onclick="togglePasswordVisibility('currentPasswordInput')">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="newPasswordInput">New Password</label>
+                    <div class="input-group">
+                        <span class="input-icon">
+                            <i class="fa-solid fa-key"></i>
+                        </span>
+                        <input type="password" id="newPasswordInput" placeholder="Enter new password" required>
+                        <button type="button" class="toggle-password" onclick="togglePasswordVisibility('newPasswordInput')">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                    <div class="password-meter" id="passwordMeterChange">
+                        <div class="password-meter-bar" id="passwordMeterBarChange"></div>
+                    </div>
+                    <small class="password-hint" id="passwordStrengthChange"></small>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPasswordInput">Confirm New Password</label>
+                    <div class="input-group">
+                        <span class="input-icon">
+                            <i class="fa-solid fa-key"></i>
+                        </span>
+                        <input type="password" id="confirmPasswordInput" placeholder="Confirm new password" required>
+                        <button type="button" class="toggle-password" onclick="togglePasswordVisibility('confirmPasswordInput')">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" type="button" onclick="closeModal('changePasswordModal')">Cancel</button>
+                    <button class="btn btn-success" type="submit" id="changePasswordBtn">Change Password</button>
+                </div>
+            </form>
         </div>
     </div>
 
