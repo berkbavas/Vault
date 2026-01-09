@@ -26,12 +26,12 @@ class AuthController extends Controller
             $maxUsernameLength = $this->config['user']['username_max_length'];
 
             // Validate input
-            $this->validate([
-                'username' => 'required|min:' . $minUsernameLength . '|max:' . $maxUsernameLength,
-                'client_salt' => 'required',
-                'kdf_salt' => 'required',
-                'password_hash' => 'required',
-                'encrypted_master_key' => 'required',
+            $this->validateJson([
+                'username' => "required|string|min:$minUsernameLength|max:$maxUsernameLength",
+                'client_salt' => 'required|string',
+                'kdf_salt' => 'required|string',
+                'password_hash' => 'required|string',
+                'encrypted_master_key' => 'required|string',
             ]);
 
             $username = $this->request->json('username');
@@ -81,7 +81,11 @@ class AuthController extends Controller
     public function getClientSalt()
     {
         try {
-            $this->validate(['username' => 'required']);
+
+            $minUsernameLength = $this->config['user']['username_min_length'];
+            $maxUsernameLength = $this->config['user']['username_max_length'];
+
+            $this->validateJson(['username' => "required|string|min:$minUsernameLength|max:$maxUsernameLength"]);
 
             // Get username from query string or request body
             $username = $this->request->json('username');
@@ -109,10 +113,14 @@ class AuthController extends Controller
     public function login()
     {
         try {
+
+            $minUsernameLength = $this->config['user']['username_min_length'];
+            $maxUsernameLength = $this->config['user']['username_max_length'];
+
             // Validate input
-            $this->validate([
-                'username' => 'required',
-                'password_hash' => 'required',
+            $this->validateJson([
+                'username' => "required|string|min:$minUsernameLength|max:$maxUsernameLength",
+                'password_hash' => 'required|string',
             ]);
 
             $username = $this->request->json('username');
@@ -154,12 +162,12 @@ class AuthController extends Controller
         try {
             $userId = $this->getAuthUserId();
 
-            $this->validate([
-                'current_password_hash' => 'required',
-                'new_password_hash' => 'required',
-                'new_encrypted_master_key' => 'required',
-                'new_client_salt' => 'required',
-                'new_kdf_salt' => 'required',
+            $this->validateJson([
+                'current_password_hash' => 'required|string',
+                'new_password_hash' => 'required|string',
+                'new_encrypted_master_key' => 'required|string',
+                'new_client_salt' => 'required|string',
+                'new_kdf_salt' => 'required|string',
             ]);
 
             $currentPasswordHash = $this->request->json('current_password_hash');
@@ -198,7 +206,7 @@ class AuthController extends Controller
                 'encrypted_master_key' => $user['encrypted_master_key'],
                 'storage_used' => $user['storage_used'],
                 'storage_quota' => $user['storage_quota'],
-            ], 'User info retrieved successfully')->send(); 
+            ], 'User info retrieved successfully')->send();
         } catch (Exception $e) {
             return $this->error($e->getMessage(), 400)->send();
         }

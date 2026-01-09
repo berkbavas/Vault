@@ -232,7 +232,7 @@ class Request
             return $matches[1];
         }
 
-        return null;    
+        return null;
     }
 
     /**
@@ -406,7 +406,7 @@ class Request
         $errors = [];
 
         foreach ($rules as $field => $fieldRules) {
-            $value = $this->input($field) ?? $this->json($field); // Support JSON input as well
+            $value = $this->input($field);
             $rulesArray = is_string($fieldRules) ? explode('|', $fieldRules) : $fieldRules;
 
             foreach ($rulesArray as $rule) {
@@ -436,6 +436,126 @@ class Request
                     $errors[$field][] = "$field must be numeric";
                 }
             }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Validate JSON input data
+     */
+    public function validateJson(array $rules): array
+    {
+        // 1) Ensure request is JSON and decodable (adjust if your Request class already decodes)
+        $payload = $this->json(); // Get entire JSON payload as associative array
+
+        $errors = [];
+
+        if (!is_array($payload)) {
+            $errors["general"] = 'Invalid JSON payload.';
+        }
+
+        // 2) Apply rules: currently supports: "required"
+        foreach ($rules as $field => $ruleString) {
+            $ruleString = (string)$ruleString;
+
+            // Split like "required|string|min:3|max:50"
+            $ruleParts = array_filter(array_map('trim', explode('|', $ruleString)));
+
+            $exists = array_key_exists($field, $payload);
+            $value  = $exists ? $payload[$field] : null;
+
+            // required
+            if (in_array('required', $ruleParts, true)) {
+                if (!$exists) {
+                    $errors[$field][] = 'This field is required.';
+                    continue;
+                }
+
+                // Treat empty string / whitespace as missing for required fields
+                if (is_string($value) && trim($value) === '') {
+                    $errors[$field][] = 'This field is required.';
+                    continue;
+                }
+
+                // If someone sends null
+                if ($value === null) {
+                    $errors[$field][] = 'This field is required.';
+                    continue;
+                }
+            }
+
+            // string
+            if (in_array('string', $ruleParts, true) && $exists && !is_string($value)) {
+                $errors[$field][] = 'This field must be a string.';
+                continue;
+            }
+
+            // min:N
+            foreach ($ruleParts as $part) {
+                if (strpos($part, 'min:') === 0) {
+                    $min = (int)substr($part, 4);
+                    if ($exists && is_string($value) && strlen($value) < $min) {
+                        $errors[$field][] = "This field must be at least $min characters.";
+                        continue;
+                    }
+                }
+            }
+
+            // max:N
+            foreach ($ruleParts as $part) {
+                if (strpos($part, 'max:') === 0) {
+                    $max = (int)substr($part, 4);
+                    if ($exists && is_string($value) && strlen($value) > $max) {
+                        $errors[$field][] = "This field must not exceed $max characters.";
+                        continue;
+                    }
+                }
+            }
+
+            // alpha_num
+            if (in_array('alpha_num', $ruleParts, true) && $exists && !preg_match('/^[a-zA-Z0-9]+$/', $value)) {
+                $errors[$field][] = 'This field must be alphanumeric.';
+                continue;
+            }
+        }
+
+        return $errors;
+    }
+
+    public function validateFile()
+    {
+        $errors = [];
+
+        if (!isset($_FILES['file'])) {
+            $errors['file'][] = 'No file uploaded.';
+            return $errors;
+        }
+
+        $file = $_FILES['file'];
+
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            $errors['file'][] = 'File upload error code: ' . $file['error'];
+            return $errors;
+        }
+
+        return $errors;
+    }
+
+    public function validateChunk()
+    {
+        $errors = [];
+
+        if (!isset($_FILES['chunk'])) {
+            $errors['chunk'][] = 'No chunk uploaded.';
+            return $errors;
+        }
+
+        $chunk = $_FILES['chunk'];
+
+        if ($chunk['error'] !== UPLOAD_ERR_OK) {
+            $errors['chunk'][] = 'Chunk upload error code: ' . $chunk['error'];
+            return $errors;
         }
 
         return $errors;

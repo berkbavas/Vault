@@ -41,11 +41,11 @@ class StorageController extends Controller
         try {
             $userId = $this->requireAuth();
 
-            $this->validate(['encrypted_name' => 'required|max:255']);
+            $this->validateJson(['encrypted_name' => 'required|string|max:255']);
 
             $parentId = $this->request->json('parent_id');
             $encryptedName = $this->request->json('encrypted_name');
-     
+
             $folderId = $this->storageService->createFolder($userId, $parentId, $encryptedName);
 
             return $this->success([
@@ -63,9 +63,9 @@ class StorageController extends Controller
     {
         try {
             $userId = $this->requireAuth();
-            $this->validate([
-                'id' => 'required',
-                'new_encrypted_name' => 'required|max:255'
+            $this->validateJson([
+                'id' => 'required|string',
+                'new_encrypted_name' => 'required|string|max:255'
             ]);
 
             $fileId = $this->request->json('id');
@@ -74,7 +74,7 @@ class StorageController extends Controller
 
             return $this->success([
                 'item' => $item
-            ], 'Item renamed successfully')->send();    
+            ], 'Item renamed successfully')->send();
         } catch (Exception $e) {
             return $this->error($e->getMessage(), 500)->send();
         }
@@ -84,8 +84,8 @@ class StorageController extends Controller
     {
         try {
             $userId = $this->requireAuth();
-            $this->validate([
-                'id' => 'required'
+            $this->validateJson([
+                'id' => 'required|string'
             ]);
 
             $fileId = $this->request->json('id');
@@ -95,7 +95,7 @@ class StorageController extends Controller
 
             return $this->success([
                 'moved' => $moved
-            ], 'Item moved successfully')->send();    
+            ], 'Item moved successfully')->send();
         } catch (Exception $e) {
             return $this->error($e->getMessage(), 500)->send();
         }
@@ -105,19 +105,16 @@ class StorageController extends Controller
     {
         try {
             $userId = $this->requireAuth();
-
-            if (!isset($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
-                return $this->error('File upload failed', 400)->send();
-            }
+            $this->validateFile();
+            $this->validate([
+                'encrypted_name' => 'required|string|max:255',
+                'original_size' => 'required|integer'
+            ]);
 
             $file = $_FILES['file'];
-            $parentId = $_POST['parent_id'] ?? null;
-            $encryptedName = $_POST['encrypted_name'] ?? '';
-            $originalSize = $_POST['original_size'] ?? 0;
-
-            if (empty($encryptedName)) {
-                return $this->error('Encrypted filename is required', 400)->send();
-            }
+            $parentId = $this->request->post('parent_id', null);
+            $encryptedName = $this->request->post('encrypted_name', '');
+            $originalSize = $this->request->post('original_size', 0);
 
             $fileData = $this->storageService->upload($userId, $file, $parentId, $encryptedName, $originalSize);
 
@@ -133,7 +130,7 @@ class StorageController extends Controller
     {
         try {
             $userId = $this->requireAuth();
-            $this->validate(['id' => 'required']);
+            $this->validateJson(['id' => 'required|integer']);
 
             $fileId = $this->request->json('id');
             $deleted = $this->storageService->delete($userId, $fileId);
@@ -150,11 +147,10 @@ class StorageController extends Controller
     {
         try {
             $userId = $this->requireAuth();
-            $fileId = $this->request->query('id');
 
-            if (!$fileId) {
-                throw new Exception('File ID is required');
-            }
+            $this->validate(['id' => 'required|integer']);
+
+            $fileId = $this->request->query('id');
 
             $fileData = $this->storageService->getFileForDownload($userId, $fileId);
 
@@ -181,16 +177,15 @@ class StorageController extends Controller
         try {
             $userId = $this->requireAuth();
 
-            if (!isset($_FILES['chunk']) || $_FILES['chunk']['error'] !== UPLOAD_ERR_OK) {
-                return $this->error('Chunk upload failed', 400)->send();
-            }
+            $this->validateChunk();
 
-            $uploadId = $_POST['upload_id'] ?? '';
-            $chunkIndex = $_POST['chunk_index'] ?? '';
+            $this->validate([
+                'upload_id' => 'required|string',
+                'chunk_index' => 'nullable|integer'
+            ]);
 
-            if (empty($uploadId) || $chunkIndex === '') {
-                return $this->error('Upload ID and chunk index are required', 400)->send();
-            }
+            $uploadId = $this->request->post('upload_id');
+            $chunkIndex = $this->request->post('chunk_index');
 
             // Read chunk data
             $chunkData = file_get_contents($_FILES['chunk']['tmp_name']);
@@ -211,10 +206,12 @@ class StorageController extends Controller
         try {
             $userId = $this->requireAuth();
 
-            $this->validate([
-                'upload_id' => 'required',
-                'encrypted_name' => 'required|max:255',
-                'total_chunks' => 'required'
+            $this->validateJson([
+                'upload_id' => 'required|string',
+                'encrypted_name' => 'required|string|max:255',
+                'parent_id' => 'nullable',
+                'original_size' => 'required|integer',
+                'total_chunks' => 'required|integer'
             ]);
 
             $uploadId = $this->request->json('upload_id');
@@ -224,11 +221,11 @@ class StorageController extends Controller
             $totalChunks = $this->request->json('total_chunks');
 
             $fileData = $this->storageService->finalizeChunkedUpload(
-                $userId, 
-                $uploadId, 
-                $parentId, 
-                $encryptedName, 
-                $originalSize, 
+                $userId,
+                $uploadId,
+                $parentId,
+                $encryptedName,
+                $originalSize,
                 $totalChunks
             );
 

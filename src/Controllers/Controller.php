@@ -51,20 +51,51 @@ abstract class Controller
     protected function validate(array $rules)
     {
         $errors = $this->request->validate($rules);
-        
+
         if (!empty($errors)) {
             JsonResponse::validationError($errors)->send();
             exit;
         }
     }
 
+    protected function validateJson(array $rules)
+    {
+        $errors = $this->request->validateJson($rules);
+
+        if (!empty($errors)) {
+            JsonResponse::validationError($errors)->send();
+            exit;
+        }
+    }
+
+    protected function validateFile()
+    {
+        $errors = $this->request->validateFile();
+
+        if (!empty($errors)) {
+            JsonResponse::validationError($errors)->send();
+            exit;
+        }
+    }
+
+    protected function validateChunk()
+    {
+        $errors = $this->request->validateChunk();
+
+        if (!empty($errors)) {
+            JsonResponse::validationError($errors)->send();
+            exit;
+        }
+    }
+
+
     /**
      * Get authenticated user ID from JWT
      */
-    protected function getAuthUserId() : ?int
+    protected function getAuthUserId(): ?int
     {
         $token = $this->request->bearerToken();
-        
+
         if (!$token) {
             JsonResponse::unauthorized('No token provided')->send();
             exit;
@@ -106,7 +137,7 @@ abstract class Controller
     private function verifyJWT($token)
     {
         $secret = $this->config['jwt']['secret'];
-        
+
         // Split token
         $parts = explode('.', $token);
         if (count($parts) !== 3) {
