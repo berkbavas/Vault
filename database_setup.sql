@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS users (
     encrypted_master_key VARCHAR(120) NOT NULL, -- 60 bytes in hex, 12 bytes IV + 32 bytes ciphertext + 16 bytes tag
     user_folder VARCHAR(255) NOT NULL,
     storage_used BIGINT DEFAULT 0,
-    storage_quota BIGINT DEFAULT 5242880000, -- Default 5 GB
+    storage_quota BIGINT DEFAULT 10737418240, -- Default 10 GB
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     last_login_at TIMESTAMP NULL
