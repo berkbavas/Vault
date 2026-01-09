@@ -93,7 +93,7 @@ return [
      */
     'storage' => [
         // Default storage quota per user (bytes)
-        'default_quota' => 524288000, // 500 MB
+        'default_quota' => 10737418240, // 10 GB
 
         // Upload chunk size for multipart uploads
         'chunk_size' => 1048576, // 1 MB
