@@ -11,6 +11,9 @@ const App = {
     folderHistory: [],
     selectedFileForRename: null,
     selectedFileForMove: null,
+    selectedItems: new Set(),
+    uploadProgress: null,
+    downloadProgress: null,
 
     /**
      * Initialize the application
@@ -25,6 +28,7 @@ const App = {
                 showLoading('Loading your files...');
                 this.masterKey = await CryptoUtils.importMasterKey(masterKeyHex);
                 await this.loadUserInfo();
+                await this.loadQuota();
                 this.showApp();
                 await this.loadFiles();
                 hideLoading();
@@ -104,6 +108,11 @@ const App = {
             e.preventDefault();
             await this.handleRename();
         });
+
+        // Bulk delete
+        document.getElementById('bulk-delete-btn')?.addEventListener('click', async () => {
+            await this.deleteSelectedFiles();
+        });
     },
 
     /**
@@ -170,6 +179,7 @@ const App = {
 
             // Load user info
             await this.loadUserInfo();
+            await this.loadQuota();
 
             // Show app
             this.showApp();
@@ -257,6 +267,50 @@ const App = {
         if (response.success) {
             this.currentUser = response.data;
             document.getElementById('username-display').textContent = this.currentUser.username;
+            this.updateQuotaDisplay(response.data.storage_used, response.data.storage_quota);
+        }
+    },
+
+    /**
+     * Load quota information
+     */
+    async loadQuota() {
+        try {
+            const response = await API.auth.me();
+            if (response.success) {
+                this.updateQuotaDisplay(response.data.storage_used, response.data.storage_quota);
+            }
+        } catch (error) {
+            console.error('Load quota error:', error);
+        }
+    },
+
+    /**
+     * Update quota display
+     */
+    updateQuotaDisplay(used, total) {
+        const quotaUsed = document.getElementById('quota-used');
+        const quotaTotal = document.getElementById('quota-total');
+        const quotaPercentage = document.getElementById('quota-percentage');
+        const quotaBarFill = document.getElementById('quota-bar-fill');
+
+        if (!quotaUsed || !quotaTotal || !quotaPercentage || !quotaBarFill) return;
+
+        const usedMB = (used / (1024 * 1024)).toFixed(2);
+        const totalMB = (total / (1024 * 1024)).toFixed(0);
+        const percentage = Math.round((used / total) * 100);
+
+        quotaUsed.textContent = usedMB + ' MB';
+        quotaTotal.textContent = totalMB + ' MB';
+        quotaPercentage.textContent = percentage + '%';
+        quotaBarFill.style.width = percentage + '%';
+
+        // Change color based on usage
+        quotaBarFill.classList.remove('warning', 'danger');
+        if (percentage >= 90) {
+            quotaBarFill.classList.add('danger');
+        } else if (percentage >= 75) {
+            quotaBarFill.classList.add('warning');
         }
     },
 
@@ -287,8 +341,163 @@ const App = {
         this.currentFolderId = null;
         this.files = [];
         this.folderHistory = [];
+        this.selectedItems.clear();
         this.showAuth();
         showToast('Logged out successfully', 'info');
+    },
+
+    /**
+     * Toggle file selection
+     */
+    toggleFileSelection(fileId, isChecked) {
+        if (isChecked) {
+            this.selectedItems.add(fileId);
+        } else {
+            this.selectedItems.delete(fileId);
+        }
+        this.updateBulkActions();
+    },
+
+    /**
+     * Toggle all file selections
+     */
+    toggleAllSelections(isChecked) {
+        const checkboxes = document.querySelectorAll('.file-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = isChecked;
+            const fileId = parseInt(checkbox.dataset.fileId);
+            if (isChecked) {
+                this.selectedItems.add(fileId);
+            } else {
+                this.selectedItems.delete(fileId);
+            }
+        });
+        this.updateBulkActions();
+    },
+
+    /**
+     * Update bulk actions visibility
+     */
+    updateBulkActions() {
+        const bulkActions = document.getElementById('bulk-actions');
+        const selectedCount = document.getElementById('selected-count');
+
+        if (bulkActions) {
+            if (this.selectedItems.size > 0) {
+                bulkActions.style.display = 'flex';
+                if (selectedCount) {
+                    selectedCount.textContent = this.selectedItems.size;
+                }
+            } else {
+                bulkActions.style.display = 'none';
+            }
+        }
+    },
+
+    /**
+     * Delete selected files
+     */
+    async deleteSelectedFiles() {
+        if (this.selectedItems.size === 0) {
+            showToast('No files selected', 'error');
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to delete ${this.selectedItems.size} item(s)?`)) {
+            return;
+        }
+
+        try {
+            showLoading(`Deleting ${this.selectedItems.size} item(s)...`);
+
+            let successCount = 0;
+            let errorCount = 0;
+
+            for (const fileId of this.selectedItems) {
+                try {
+                    const response = await API.files.delete(fileId);
+                    if (response.success) {
+                        successCount++;
+                    } else {
+                        errorCount++;
+                    }
+                } catch (error) {
+                    errorCount++;
+                }
+            }
+
+            this.selectedItems.clear();
+            this.updateBulkActions();
+
+            if (successCount > 0) {
+                showToast(`Successfully deleted ${successCount} item(s)`, 'success');
+            }
+            if (errorCount > 0) {
+                showToast(`Failed to delete ${errorCount} item(s)`, 'error');
+            }
+
+            await this.loadFiles(this.currentFolderId);
+            await this.loadQuota();
+            hideLoading();
+        } catch (error) {
+            console.error('Bulk delete error:', error);
+            showToast(error.message || 'Delete failed', 'error');
+            hideLoading();
+        }
+    },
+
+    /**
+     * Get file icon based on file extension
+     */
+    getFileIcon(filename) {
+        const ext = filename.toLowerCase().split('.').pop();
+
+        // Image files
+        if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(ext)) {
+            return 'fa-file-image';
+        }
+
+        // Video files
+        if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'webm'].includes(ext)) {
+            return 'fa-file-video';
+        }
+
+        // Audio files
+        if (['mp3', 'wav', 'ogg', 'flac', 'm4a'].includes(ext)) {
+            return 'fa-file-audio';
+        }
+
+        // Document files
+        if (['doc', 'docx'].includes(ext)) {
+            return 'fa-file-word';
+        }
+        if (['xls', 'xlsx'].includes(ext)) {
+            return 'fa-file-excel';
+        }
+        if (['ppt', 'pptx'].includes(ext)) {
+            return 'fa-file-powerpoint';
+        }
+        if (ext === 'pdf') {
+            return 'fa-file-pdf';
+        }
+
+        // Archive files
+        if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
+            return 'fa-file-archive';
+        }
+
+        // Code files
+        if (['html', 'css', 'js', 'php', 'py', 'java', 'c', 'cpp', 'json', 'xml'].includes(ext)) {
+            return 'fa-file-code';
+        }
+
+        // Text files
+        if (['txt', 'md', 'rtf'].includes(ext)) {
+            return 'fa-file-alt';
+        }
+
+        // Default
+        return 'fa-file';
     },
 
     /**
@@ -316,24 +525,26 @@ const App = {
     },
 
     /**
-     * Render file list
+     * Render file list with multiple selection support
      */
     async renderFileList() {
         const tbody = document.getElementById('file-list-body');
+        const cardsContainer = document.getElementById('file-cards-container');
         tbody.innerHTML = '';
+        cardsContainer.innerHTML = '';
 
         if (this.files.length === 0) {
             document.querySelector('.file-list').style.display = 'none';
+            document.querySelector('.file-cards').style.display = 'none';
             document.getElementById('empty-state').classList.remove('hidden');
             return;
         }
 
-        document.querySelector('.file-list').style.display = 'table';
+        document.querySelector('.file-list').style.display = '';
+        document.querySelector('.file-cards').style.display = '';
         document.getElementById('empty-state').classList.add('hidden');
 
         for (const file of this.files) {
-            const tr = document.createElement('tr');
-
             // Decrypt filename
             let displayName = 'Decrypting...';
             try {
@@ -343,77 +554,151 @@ const App = {
                 displayName = '[Decryption failed]';
             }
 
-            // Name column
-            const nameTd = document.createElement('td');
-            const nameDiv = document.createElement('div');
-            nameDiv.className = 'file-name';
-            if (file.is_folder === '1') {
-                nameDiv.onclick = () => this.openFolder(file.id, displayName);
-            }
-            nameDiv.innerHTML = `
-                <svg class="file-icon ${file.is_folder === '1' ? 'folder' : 'file'}" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    ${file.is_folder === '1'
-                    ? '<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>'
-                    : '<path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z"/><polyline points="13 2 13 9 20 9"/>'
-                }
-                </svg>
+            // Render desktop row
+            this.renderDesktopRow(file, displayName, tbody);
+
+            // Render mobile card
+            this.renderMobileCard(file, displayName, cardsContainer);
+        }
+    },
+
+    /**
+     * Render desktop table row
+     */
+    renderDesktopRow(file, displayName, tbody) {
+        const tr = document.createElement('tr');
+        tr.dataset.fileId = file.id;
+
+        // Checkbox column
+        const checkboxTd = document.createElement('td');
+        checkboxTd.style.width = '40px';
+        checkboxTd.innerHTML = `
+                <input type="checkbox" class="file-checkbox" data-file-id="${file.id}" 
+                       onchange="App.toggleFileSelection(${file.id}, this.checked)">
+            `;
+        tr.appendChild(checkboxTd);
+
+        // Name column
+        const nameTd = document.createElement('td');
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'file-name';
+        if (file.type === 'folder') {
+            nameDiv.onclick = () => this.openFolder(file.id, displayName);
+            nameDiv.style.cursor = 'pointer';
+        }
+
+        const iconClass = file.type === 'folder' ? 'fa-folder-open' : this.getFileIcon(displayName);
+        nameDiv.innerHTML = `
+                <i class="fas ${iconClass} file-icon ${file.type === 'folder' ? 'folder' : 'file'}"></i>
                 <span>${escapeHtml(displayName)}</span>
             `;
-            nameTd.appendChild(nameDiv);
-            tr.appendChild(nameTd);
+        nameTd.appendChild(nameDiv);
+        tr.appendChild(nameTd);
 
-            // Size column
-            const sizeTd = document.createElement('td');
-            sizeTd.className = 'text-secondary';
-            sizeTd.textContent = file.is_folder === '1' ? '—' : formatFileSize(file.original_size);
-            tr.appendChild(sizeTd);
+        // Size column
+        const sizeTd = document.createElement('td');
+        sizeTd.className = 'text-secondary';
+        sizeTd.textContent = file.type === 'folder' ? '—' : formatFileSize(file.original_size);
+        tr.appendChild(sizeTd);
 
-            // Modified column
-            const modifiedTd = document.createElement('td');
-            modifiedTd.className = 'text-secondary';
-            modifiedTd.textContent = formatDate(file.created_at);
-            tr.appendChild(modifiedTd);
+        // Modified column
+        const modifiedTd = document.createElement('td');
+        modifiedTd.className = 'text-secondary';
+        modifiedTd.textContent = formatDate(file.created_at);
+        tr.appendChild(modifiedTd);
 
-            // Actions column
-            const actionsTd = document.createElement('td');
-            const actionsDiv = document.createElement('div');
-            actionsDiv.className = 'file-actions';
+        // Actions column
+        const actionsTd = document.createElement('td');
+        const actionsDiv = document.createElement('div');
+        actionsDiv.className = 'file-actions';
 
-            if (file.is_folder === '0') {
-                actionsDiv.innerHTML += `
+        if (file.type === 'file') {
+            actionsDiv.innerHTML += `
                     <button class="action-btn" onclick="App.downloadFile(${file.id}, '${escapeHtml(displayName)}')" title="Download">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4m4-5l5 5m0 0l5-5m-5 5V3" stroke-width="2"/>
-                        </svg>
+                        <i class="fas fa-download"></i>
                     </button>
                 `;
-            }
+        }
 
-            actionsDiv.innerHTML += `
+        actionsDiv.innerHTML += `
                 <button class="action-btn" onclick="App.showRenameModal(${file.id}, '${escapeHtml(displayName)}')" title="Rename">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke-width="2"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke-width="2"/>
-                    </svg>
+                    <i class="fas fa-edit"></i>
                 </button>
                 <button class="action-btn" onclick="App.showMoveModal(${file.id})" title="Move">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <path d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9z" stroke-width="2"/>
-                        <polyline points="13 2 13 9 20 9" stroke-width="2"/>
-                    </svg>
+                    <i class="fas fa-arrows-alt"></i>
                 </button>
                 <button class="action-btn danger" onclick="App.deleteFile(${file.id}, '${escapeHtml(displayName)}')" title="Delete">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                        <polyline points="3 6 5 6 21 6" stroke-width="2"/>
-                        <path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke-width="2"/>
-                    </svg>
+                    <i class="fas fa-trash"></i>
                 </button>
             `;
 
-            actionsTd.appendChild(actionsDiv);
-            tr.appendChild(actionsTd);
+        actionsTd.appendChild(actionsDiv);
+        tr.appendChild(actionsTd);
 
-            tbody.appendChild(tr);
+        tbody.appendChild(tr);
+    },
+
+    /**
+     * Render mobile card view
+     */
+    renderMobileCard(file, displayName, container) {
+        const card = document.createElement('div');
+        card.className = 'file-card';
+        card.dataset.fileId = file.id;
+
+        const iconClass = file.type === 'folder' ? 'fa-folder-open' : this.getFileIcon(displayName);
+        const size = file.type === 'folder' ? '' : formatFileSize(file.original_size);
+        const date = formatDate(file.created_at);
+
+        card.innerHTML = `
+            <div class="file-card-header">
+                <input type="checkbox" class="file-checkbox file-card-checkbox" data-file-id="${file.id}" 
+                       onchange="App.toggleFileSelection(${file.id}, this.checked)">
+            </div>
+            <div class="file-card-content" ${file.type === 'folder' ? `onclick="App.openFolder(${file.id}, '${escapeHtml(displayName)}')" style="cursor: pointer;"` : ''}>
+                <div class="file-card-icon ${file.type === 'folder' ? 'folder' : 'file'}">
+                    <i class="fas ${iconClass}"></i>
+                </div>
+                <div class="file-card-name">${escapeHtml(displayName)}</div>
+                <div class="file-card-meta">
+                    ${file.type === 'file' ? `<span>${size}</span>` : '<span>Folder</span>'}
+                    <span>${date}</span>
+                </div>
+            </div>
+            <div class="file-card-actions">
+                ${file.type === 'file' ? `
+                    <button class="action-btn" onclick="App.downloadFile(${file.id}, '${escapeHtml(displayName)}')" title="Download">
+                        <i class="fas fa-download"></i>
+                    </button>
+                ` : ''}
+                <button class="action-btn" onclick="App.showRenameModal(${file.id}, '${escapeHtml(displayName)}')" title="Rename">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="action-btn danger" onclick="App.deleteFile(${file.id}, '${escapeHtml(displayName)}')" title="Delete">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+
+        container.appendChild(card);
+    },
+
+    /**
+     * Update bulk actions visibility
+     */
+    updateBulkActions() {
+        const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
+        const selectedCount = document.getElementById('selected-count');
+
+        if (bulkDeleteBtn) {
+            if (this.selectedItems.size > 0) {
+                bulkDeleteBtn.style.display = 'flex';
+                if (selectedCount) {
+                    selectedCount.textContent = this.selectedItems.size;
+                }
+            } else {
+                bulkDeleteBtn.style.display = 'none';
+            }
         }
     },
 
@@ -484,15 +769,15 @@ const App = {
     },
 
     /**
-     * Handle file upload
+     * Handle file upload with chunked support
      */
     async handleFileUpload(files) {
         if (!files || files.length === 0) return;
 
         try {
-            showLoading(`Uploading ${files.length} file(s)...`);
-
             for (const file of files) {
+                showLoading(`Encrypting ${file.name}...`);
+
                 // Read file
                 const fileData = await file.arrayBuffer();
 
@@ -502,26 +787,48 @@ const App = {
                 // Encrypt filename
                 const encryptedName = await CryptoUtils.encryptFilename(file.name, this.masterKey);
 
-                // Upload
-                const blob = new Blob([encryptedData]);
-                const response = await API.files.upload(
-                    blob,
-                    encryptedName,
-                    file.size,
-                    this.currentFolderId,
-                    (loaded, total) => {
-                        const percent = Math.round((loaded / total) * 100);
-                        updateLoadingText(`Uploading ${file.name}: ${percent}%`);
-                    }
-                );
+                const encryptedBlob = new Blob([encryptedData]);
+                const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+                const USE_CHUNKED = encryptedBlob.size > CHUNK_SIZE;
 
-                if (!response.success) {
-                    throw new Error(response.message || `Failed to upload ${file.name}`);
+                if (USE_CHUNKED) {
+                    // Chunked upload for large files
+                    updateLoadingText(`Uploading ${file.name} (0%)...`);
+                    const response = await this.uploadFileInChunks(
+                        encryptedBlob,
+                        encryptedName,
+                        file.size,
+                        this.currentFolderId,
+                        CHUNK_SIZE,
+                        file.name
+                    );
+
+                    if (!response.success) {
+                        throw new Error(response.message || `Failed to upload ${file.name}`);
+                    }
+                } else {
+                    // Standard upload for small files
+                    const response = await API.files.upload(
+                        encryptedBlob,
+                        encryptedName,
+                        file.size,
+                        this.currentFolderId,
+                        (loaded, total) => {
+                            const percent = Math.round((loaded / total) * 100);
+                            updateLoadingText(`Uploading ${file.name}: ${percent}%`);
+                        }
+                    );
+
+                    if (!response.success) {
+                        throw new Error(response.message || `Failed to upload ${file.name}`);
+                    }
                 }
+
+                showToast(`${file.name} uploaded successfully!`, 'success');
             }
 
-            showToast(`${files.length} file(s) uploaded successfully!`, 'success');
             await this.loadFiles(this.currentFolderId);
+            await this.loadQuota();
             hideLoading();
         } catch (error) {
             console.error('Upload error:', error);
@@ -531,7 +838,61 @@ const App = {
     },
 
     /**
-     * Download file
+     * Upload file in chunks
+     */
+    async uploadFileInChunks(encryptedBlob, encryptedFilename, originalSize, parentId, chunkSize, displayName) {
+        const uploadId = this.generateUploadId();
+        const totalSize = encryptedBlob.size;
+        const totalChunks = Math.ceil(totalSize / chunkSize);
+        let uploadedBytes = 0;
+
+        for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+            const start = chunkIndex * chunkSize;
+            const end = Math.min(start + chunkSize, totalSize);
+            const chunkBlob = encryptedBlob.slice(start, end);
+
+            const percent = Math.round((uploadedBytes / totalSize) * 100);
+            updateLoadingText(`Uploading ${displayName}: ${percent}% (chunk ${chunkIndex + 1}/${totalChunks})`);
+
+            const response = await API.files.uploadChunk(
+                uploadId,
+                chunkIndex,
+                chunkBlob,
+                (loaded, total) => {
+                    const chunkProgress = Math.round(((uploadedBytes + loaded) / totalSize) * 100);
+                    updateLoadingText(`Uploading ${displayName}: ${chunkProgress}% (chunk ${chunkIndex + 1}/${totalChunks})`);
+                }
+            );
+
+            if (!response.success) {
+                throw new Error(response.message || 'Chunk upload failed');
+            }
+
+            uploadedBytes += chunkBlob.size;
+        }
+
+        // Finalize upload
+        updateLoadingText(`Finalizing ${displayName}...`);
+        const finalizeResponse = await API.files.finalizeUpload(
+            uploadId,
+            encryptedFilename,
+            originalSize,
+            totalChunks,
+            parentId
+        );
+
+        return finalizeResponse;
+    },
+
+    /**
+     * Generate unique upload ID
+     */
+    generateUploadId() {
+        return 'upload_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    },
+
+    /**
+     * Download file with progress tracking
      */
     async downloadFile(fileId, filename) {
         try {
@@ -542,7 +903,31 @@ const App = {
                 throw new Error('Download failed');
             }
 
-            const encryptedData = await response.arrayBuffer();
+            // Track download progress
+            const contentLength = response.headers.get('Content-Length');
+            const total = parseInt(contentLength, 10);
+            let loaded = 0;
+
+            const reader = response.body.getReader();
+            const chunks = [];
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                chunks.push(value);
+                loaded += value.length;
+
+                if (total) {
+                    const percent = Math.round((loaded / total) * 100);
+                    updateLoadingText(`Downloading ${filename}: ${percent}%`);
+                }
+            }
+
+            updateLoadingText(`Decrypting ${filename}...`);
+
+            const encryptedBlob = new Blob(chunks);
+            const encryptedData = await encryptedBlob.arrayBuffer();
 
             // Decrypt file
             const decryptedData = await CryptoUtils.decryptFile(encryptedData, this.masterKey);
@@ -585,6 +970,7 @@ const App = {
 
             showToast(`${filename} deleted successfully!`, 'success');
             await this.loadFiles(this.currentFolderId);
+            await this.loadQuota();
             hideLoading();
         } catch (error) {
             console.error('Delete error:', error);
@@ -697,7 +1083,7 @@ const App = {
                 throw new Error('Failed to load folders');
             }
 
-            const allFiles = response.data;
+            const allFiles = response.data.files || response.data;
             const folders = allFiles.filter(f => f.is_folder === '1');
 
             const treeContainer = document.getElementById('folder-tree');
@@ -708,9 +1094,7 @@ const App = {
             rootItem.className = 'folder-item';
             rootItem.dataset.folderId = 'null';
             rootItem.innerHTML = `
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" stroke-width="2"/>
-                </svg>
+                <i class="fas fa-home" style="margin-right: 8px;"></i>
                 <span>Root</span>
             `;
             rootItem.onclick = () => this.selectMoveDestination(rootItem);
@@ -727,9 +1111,7 @@ const App = {
                 try {
                     const displayName = await CryptoUtils.decryptFilename(folder.encrypted_name, this.masterKey);
                     folderItem.innerHTML = `
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                            <path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" stroke-width="2"/>
-                        </svg>
+                        <i class="fas fa-folder-open" style="margin-right: 8px;"></i>
                         <span>${escapeHtml(displayName)}</span>
                     `;
                     folderItem.onclick = () => this.selectMoveDestination(folderItem);
