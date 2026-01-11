@@ -454,6 +454,7 @@ class Request
         if (!is_array($payload)) {
             $errors["general"] = 'Invalid JSON payload.';
         }
+        
 
         // 2) Apply rules: currently supports: "required"
         foreach ($rules as $field => $ruleString) {
@@ -464,6 +465,11 @@ class Request
 
             $exists = array_key_exists($field, $payload);
             $value  = $exists ? $payload[$field] : null;
+
+            // nullable
+            if (in_array('nullable', $ruleParts, true) && (!$exists || $value === null)) {
+                continue; // Skip other validations if nullable and not present
+            }
 
             // required
             if (in_array('required', $ruleParts, true)) {
