@@ -23,6 +23,11 @@ class StorageController extends Controller
     {
         try {
             $userId = $this->requireAuth();
+
+            $this->validate([
+                'parent_id' => 'nullable|integer'
+            ]);
+
             $parentId = $this->request->query('parent_id', null);
 
             $files = $this->storageService->list($userId, $parentId);
@@ -41,7 +46,10 @@ class StorageController extends Controller
         try {
             $userId = $this->requireAuth();
 
-            $this->validateJson(['encrypted_name' => 'required|string|max:255']);
+            $this->validateJson([
+                'parent_id' => 'nullable|integer',
+                'encrypted_name' => 'required|string|max:255'
+            ]);
 
             $parentId = $this->request->json('parent_id');
             $encryptedName = $this->request->json('encrypted_name');
@@ -64,7 +72,7 @@ class StorageController extends Controller
         try {
             $userId = $this->requireAuth();
             $this->validateJson([
-                'id' => 'required|string',
+                'id' => 'required|integer',
                 'new_encrypted_name' => 'required|string|max:255'
             ]);
 
@@ -84,8 +92,10 @@ class StorageController extends Controller
     {
         try {
             $userId = $this->requireAuth();
+            
             $this->validateJson([
-                'id' => 'required|string'
+                'id' => 'required|integer',
+                'new_parent_id' => 'nullable|integer'
             ]);
 
             $fileId = $this->request->json('id');
@@ -105,6 +115,7 @@ class StorageController extends Controller
     {
         try {
             $userId = $this->requireAuth();
+
             $this->validateFile();
             $this->validate([
                 'encrypted_name' => 'required|string|max:255',
@@ -130,6 +141,7 @@ class StorageController extends Controller
     {
         try {
             $userId = $this->requireAuth();
+
             $this->validateJson(['id' => 'required|integer']);
 
             $fileId = $this->request->json('id');

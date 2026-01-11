@@ -505,6 +505,10 @@ const App = {
      */
     async loadFiles(folderId = null) {
         try {
+            // Clear selections
+            this.toggleAllSelections(false);
+            this.updateBulkActions();
+
             showLoading('Loading files...');
 
             const response = await API.files.list(folderId);
@@ -724,7 +728,7 @@ const App = {
         for (let i = 0; i < this.folderHistory.length; i++) {
             const separator = document.createElement('span');
             separator.className = 'breadcrumb-separator';
-            separator.textContent = '>';
+            separator.innerHTML = '<i class="fas fa-chevron-right"></i>';
             breadcrumb.appendChild(separator);
 
             const folderLink = document.createElement('a');
@@ -1154,7 +1158,7 @@ const App = {
         try {
             showLoading('Moving...');
 
-            const response = await API.files.move(String(this.selectedFileForMove), newParentId);
+            const response = await API.files.move(this.selectedFileForMove, newParentId);
             if (!response.success) {
                 throw new Error(response.message || 'Move failed');
             }
@@ -1271,15 +1275,13 @@ function showToast(message, type = 'info') {
     toast.className = `toast ${type}`;
 
     const icons = {
-        success: '<path d="M20 6L9 17l-5-5" stroke-width="2"/>',
-        error: '<path d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2"/>',
-        info: '<path d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" stroke-width="2"/>'
+        success: '<i class="fas fa-check-circle" stroke-width="2" style="color: #10b981;"></i>',
+        error: '<i class="fas fa-exclamation-circle" stroke-width="2" style="color: #ef4444;"></i>',
+        info: '<i class="fas fa-info-circle" stroke-width="2" style="color: #3b82f6;"></i>'
     };
 
     toast.innerHTML = `
-        <svg class="toast-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-            ${icons[type] || icons.info}
-        </svg>
+        ${icons[type] || icons.info}
         <span class="toast-message">${escapeHtml(message)}</span>
         <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
     `;
