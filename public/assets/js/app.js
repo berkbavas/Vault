@@ -362,6 +362,7 @@ const App = {
      * Toggle all file selections
      */
     toggleAllSelections(isChecked) {
+        document.getElementById('select-all').checked = isChecked;
         const checkboxes = document.querySelectorAll('.file-checkbox');
         checkboxes.forEach(checkbox => {
             checkbox.checked = isChecked;
@@ -410,31 +411,15 @@ const App = {
         try {
             showLoading(`Deleting ${this.selectedItems.size} item(s)...`);
 
-            let successCount = 0;
-            let errorCount = 0;
-
-            for (const fileId of this.selectedItems) {
-                try {
-                    const response = await API.files.delete(fileId);
-                    if (response.success) {
-                        successCount++;
-                    } else {
-                        errorCount++;
-                    }
-                } catch (error) {
-                    errorCount++;
-                }
+            const response = await API.files.deleteMultiple(Array.from(this.selectedItems));
+            if (!response.success) {
+                throw new Error(response.message || 'Bulk delete failed');
             }
 
             this.selectedItems.clear();
             this.updateBulkActions();
+            showToast('Selected items deleted successfully', 'success');
 
-            if (successCount > 0) {
-                showToast(`Successfully deleted ${successCount} item(s)`, 'success');
-            }
-            if (errorCount > 0) {
-                showToast(`Failed to delete ${errorCount} item(s)`, 'error');
-            }
 
             await this.loadFiles(this.currentFolderId);
             await this.loadQuota();

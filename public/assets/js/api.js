@@ -182,6 +182,13 @@ const API = {
             });
         },
 
+        async deleteMultiple(fileIds) {
+            return await API.request('/file/delete_multiple.php', {
+                method: 'POST',
+                body: JSON.stringify({ ids: fileIds })
+            });
+        },
+
         async rename(id, newEncryptedName) {
             return await API.request('/file/rename.php', {
                 method: 'POST',

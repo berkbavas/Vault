@@ -155,6 +155,24 @@ class StorageController extends Controller
         }
     }
 
+    public function deleteMultiple()
+    {
+        try {
+            $userId = $this->requireAuth();
+
+            $this->validateJson(['ids' => 'required|array']);
+
+            $fileIds = $this->request->json('ids');
+            $deleted = $this->storageService->deleteMultiple($userId, $fileIds);
+
+            return $this->success([
+                'deleted' => $deleted
+            ], 'Items deleted successfully')->send();
+        } catch (Exception $e) {
+            return $this->error($e->getMessage(), 500)->send();
+        }
+    }
+
     public function download()
     {
         try {

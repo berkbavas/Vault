@@ -485,6 +485,32 @@ class Request
                 }
             }
 
+            // array
+            if (in_array('array', $ruleParts, true) && $exists && !is_array($value)) {
+                $errors[$field][] = 'This field must be an array.';
+                continue;
+            }
+
+            // alpha_num
+            if (in_array('alpha_num', $ruleParts, true) && $exists && !preg_match('/^[a-zA-Z0-9]+$/', $value)) {
+                $errors[$field][] = 'This field must be alphanumeric.';
+                continue;
+            }
+
+            // integer
+            if (in_array('integer', $ruleParts, true) && $exists && !is_int($value)) {
+                $errors[$field][] = 'This field must be an integer.';
+                continue;
+            }
+
+            // numeric
+            if (in_array('numeric', $ruleParts, true) && $exists && !is_numeric($value)) {
+                $errors[$field][] = 'This field must be numeric.';
+                continue;
+            }
+
+
+
             // string
             if (in_array('string', $ruleParts, true) && $exists && !is_string($value)) {
                 $errors[$field][] = 'This field must be a string.';
@@ -511,12 +537,6 @@ class Request
                         continue;
                     }
                 }
-            }
-
-            // alpha_num
-            if (in_array('alpha_num', $ruleParts, true) && $exists && !preg_match('/^[a-zA-Z0-9]+$/', $value)) {
-                $errors[$field][] = 'This field must be alphanumeric.';
-                continue;
             }
         }
 

@@ -189,6 +189,24 @@ class StorageService
         return true;
     }
 
+    public function deleteMultiple($userId, $fileIds)
+    {
+        $deletedCount = 0;
+
+        foreach ($fileIds as $fileId) {
+            try {
+                if ($this->delete($userId, $fileId)) {
+                    $deletedCount++;
+                }
+            } catch (Exception $e) {
+    
+                continue;
+            }
+        }
+
+        return $deletedCount;
+    }
+
     /**
      * Delete folder recursively
      */
@@ -296,7 +314,7 @@ class StorageService
         // Update metadata.json
         $metadataPath = $chunksDir . '/metadata.json';
         $metadata = [];
-        
+
         if (file_exists($metadataPath)) {
             $metadataContent = file_get_contents($metadataPath);
             $metadata = json_decode($metadataContent, true) ?? [];
@@ -415,5 +433,4 @@ class StorageService
         }
         rmdir($dir);
     }
-
 }
