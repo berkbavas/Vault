@@ -713,7 +713,7 @@ const App = {
         const homeLink = document.createElement('a');
         homeLink.href = '#';
         homeLink.className = 'breadcrumb-item';
-        homeLink.textContent = 'Home';
+        homeLink.innerHTML = '<i class="fas fa-home"></i> Home';
         homeLink.onclick = (e) => {
             e.preventDefault();
             this.navigateToRoot();
@@ -724,7 +724,7 @@ const App = {
         for (let i = 0; i < this.folderHistory.length; i++) {
             const separator = document.createElement('span');
             separator.className = 'breadcrumb-separator';
-            separator.textContent = '/';
+            separator.textContent = '>';
             breadcrumb.appendChild(separator);
 
             const folderLink = document.createElement('a');
@@ -1084,7 +1084,7 @@ const App = {
             }
 
             const allFiles = response.data.files || response.data;
-            const folders = allFiles.filter(f => f.is_folder === '1');
+            const folders = allFiles.filter(f => f.type === 'folder');
 
             const treeContainer = document.getElementById('folder-tree');
             treeContainer.innerHTML = '';
@@ -1154,7 +1154,7 @@ const App = {
         try {
             showLoading('Moving...');
 
-            const response = await API.files.move(this.selectedFileForMove, newParentId);
+            const response = await API.files.move(String(this.selectedFileForMove), newParentId);
             if (!response.success) {
                 throw new Error(response.message || 'Move failed');
             }
@@ -1198,8 +1198,8 @@ const App = {
             return;
         }
 
-        if (newPassword.length < 8) {
-            showToast('New password must be at least 8 characters', 'error');
+        if (newPassword.length < 4) {
+            showToast('New password must be at least 4 characters', 'error');
             return;
         }
 

@@ -58,8 +58,13 @@ body {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 #loading-text {
@@ -87,16 +92,24 @@ body {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
 
 .auth-card {
+    display: flex;
+    flex-direction: column;
     background: var(--card-bg);
     border-radius: 12px;
     padding: 40px;
     width: 100%;
-    max-width: 440px;
     box-shadow: var(--shadow-lg);
 }
 
@@ -173,7 +186,6 @@ body {
 
 .btn-primary:hover {
     background: var(--primary-hover);
-    transform: translateY(-1px);
     box-shadow: var(--shadow-md);
 }
 
@@ -317,23 +329,33 @@ body {
 .breadcrumb {
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 14px;
-    color: var(--text-secondary);
+    gap: 12px;
+    font-size: 1rem;
+    color: #6b7280;
+    padding: 16px 0;
 }
 
 .breadcrumb-item {
     cursor: pointer;
-    color: var(--primary-color);
+    color: #6b7280;
     text-decoration: none;
+    transition: color 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .breadcrumb-item:hover {
-    text-decoration: underline;
+    color: #1f2937;
+}
+
+.breadcrumb-item i {
+    font-size: 18px;
 }
 
 .breadcrumb-separator {
-    color: var(--text-secondary);
+    color: #9ca3af;
+    font-weight: 400;
 }
 
 /* File List */
@@ -489,6 +511,7 @@ body {
         opacity: 0;
         transform: translateY(-20px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -537,7 +560,6 @@ body {
     display: flex;
     gap: 12px;
     justify-content: flex-end;
-    padding: 0 24px 24px 24px;
 }
 
 .modal-actions .btn {
@@ -550,7 +572,10 @@ body {
 }
 
 .move-modal-body {
-    padding: 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 24px;
     max-height: 400px;
     overflow-y: auto;
 }
@@ -618,6 +643,7 @@ body {
         opacity: 0;
         transform: translateX(100%);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
@@ -730,7 +756,7 @@ body {
     padding: 8px 16px;
     background: var(--bg-color);
     border-radius: 8px;
-    min-width: 200px;
+    min-width: 320px;
 }
 
 .quota-info {
