@@ -353,6 +353,10 @@ input{
 }
 .icon-btn:hover{ background: var(--panel-2); }
 
+#sidebar-toggle{
+  display: none;
+}
+
 .breadcrumb{
   display:flex;
   align-items:center;
@@ -644,6 +648,20 @@ input{
   .app-shell{
     grid-template-columns: 1fr;
   }
+  .sidebar-backdrop{
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(2px);
+    z-index: 19;
+    opacity: 0;
+    transition: opacity .18s ease-out;
+  }
+  .app-shell.sidebar-open .sidebar-backdrop{
+    display: block;
+    opacity: 1;
+  }
   .sidebar{
     position: fixed;
     inset: 0 auto 0 0;
@@ -656,6 +674,9 @@ input{
   }
   .app-shell.sidebar-open .sidebar{
     transform: translateX(0);
+  }
+  #sidebar-toggle{
+    display: inline-flex;
   }
   .topbar{
     padding-left: 12px;

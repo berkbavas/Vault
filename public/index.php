@@ -119,6 +119,9 @@
 
   <!-- App -->
   <div id="app-container" class="app-shell hidden">
+    <!-- Sidebar Backdrop -->
+    <div id="sidebar-backdrop" class="sidebar-backdrop" hidden></div>
+    
     <!-- Sidebar -->
     <aside class="sidebar" aria-label="Sidebar">
       <div class="sidebar-top">
@@ -341,8 +344,14 @@
       const shell = document.documentElement;
       const toggle = document.getElementById('sidebar-toggle');
       const app = document.getElementById('app-container');
+      const backdrop = document.getElementById('sidebar-backdrop');
+      
       if (toggle && app) {
         toggle.addEventListener('click', () => app.classList.toggle('sidebar-open'));
+      }
+      
+      if (backdrop && app) {
+        backdrop.addEventListener('click', () => app.classList.remove('sidebar-open'));
       }
 
       const tabButtons = document.querySelectorAll('.tab-btn');
