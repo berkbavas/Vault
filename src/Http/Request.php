@@ -515,8 +515,6 @@ class Request
                 continue;
             }
 
-
-
             // string
             if (in_array('string', $ruleParts, true) && $exists && !is_string($value)) {
                 $errors[$field][] = 'This field must be a string.';

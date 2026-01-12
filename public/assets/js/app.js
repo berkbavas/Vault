@@ -376,26 +376,31 @@ const App = {
         this.updateBulkActions();
     },
 
-    /**
+        /**
      * Update bulk actions visibility
      */
     updateBulkActions() {
         const bulkActions = document.getElementById('bulk-actions');
+        const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
         const selectedCount = document.getElementById('selected-count');
 
+        const hasSelection = this.selectedItems.size > 0;
+
+        // Container
         if (bulkActions) {
-            if (this.selectedItems.size > 0) {
-                bulkActions.style.display = 'flex';
-                if (selectedCount) {
-                    selectedCount.textContent = this.selectedItems.size;
-                }
-            } else {
-                bulkActions.style.display = 'none';
-            }
+            bulkActions.style.display = hasSelection ? 'flex' : 'none';
+        }
+
+        // Button (defensive: in case container styling changes later)
+        if (bulkDeleteBtn) {
+            bulkDeleteBtn.style.display = hasSelection ? 'inline-flex' : 'none';
+        }
+
+        if (selectedCount) {
+            selectedCount.textContent = String(this.selectedItems.size);
         }
     },
-
-    /**
+/**
      * Delete selected files
      */
     async deleteSelectedFiles() {
@@ -672,26 +677,31 @@ const App = {
         container.appendChild(card);
     },
 
-    /**
+        /**
      * Update bulk actions visibility
      */
     updateBulkActions() {
+        const bulkActions = document.getElementById('bulk-actions');
         const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
         const selectedCount = document.getElementById('selected-count');
 
+        const hasSelection = this.selectedItems.size > 0;
+
+        // Container
+        if (bulkActions) {
+            bulkActions.style.display = hasSelection ? 'flex' : 'none';
+        }
+
+        // Button (defensive: in case container styling changes later)
         if (bulkDeleteBtn) {
-            if (this.selectedItems.size > 0) {
-                bulkDeleteBtn.style.display = 'flex';
-                if (selectedCount) {
-                    selectedCount.textContent = this.selectedItems.size;
-                }
-            } else {
-                bulkDeleteBtn.style.display = 'none';
-            }
+            bulkDeleteBtn.style.display = hasSelection ? 'inline-flex' : 'none';
+        }
+
+        if (selectedCount) {
+            selectedCount.textContent = String(this.selectedItems.size);
         }
     },
-
-    /**
+/**
      * Update breadcrumb navigation
      */
     updateBreadcrumb() {
