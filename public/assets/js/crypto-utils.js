@@ -268,6 +268,117 @@ const CryptoUtils = {
     },
 
     /**
+     * Encrypt file in chunks to reduce memory usage
+     * Format: [mainIV(12)] + [chunkSize(4) + chunkIV(12) + encryptedData] + ...
+     * @param {File} file - File object to encrypt
+     * @param {CryptoKey} masterKey - Master key
+     * @param {Function} progressCallback - Progress callback (bytesProcessed, totalBytes)
+     * @returns {Promise<Blob>}
+     */
+    async encryptFileInChunks(file, masterKey, progressCallback = null) {
+        const READ_CHUNK_SIZE = 64 * 1024 * 1024; // 64MB read chunks to save memory
+        const mainIv = this.generateRandomBytes(this.IV_SIZE);
+        const encryptedParts = [mainIv];
+        
+        let offset = 0;
+        const totalSize = file.size;
+
+        while (offset < totalSize) {
+            // Read chunk from file
+            const end = Math.min(offset + READ_CHUNK_SIZE, totalSize);
+            const chunk = file.slice(offset, end);
+            const chunkData = await chunk.arrayBuffer();
+            
+            // Encrypt this chunk with unique IV
+            const chunkIv = this.generateRandomBytes(this.IV_SIZE);
+            const encryptedChunk = await crypto.subtle.encrypt(
+                { name: 'AES-GCM', iv: chunkIv },
+                masterKey,
+                chunkData
+            );
+            
+            // Store: chunkSize(4 bytes) + chunkIV(12 bytes) + encrypted data
+            const sizeBytes = new Uint32Array([encryptedChunk.byteLength]);
+            encryptedParts.push(new Uint8Array(sizeBytes.buffer));
+            encryptedParts.push(chunkIv);
+            encryptedParts.push(new Uint8Array(encryptedChunk));
+            
+            offset = end;
+            
+            if (progressCallback) {
+                progressCallback(offset, totalSize);
+            }
+            
+            // Allow browser to breathe
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+
+        return new Blob(encryptedParts);
+    },
+
+    /**
+     * Decrypt file in chunks to reduce memory usage
+     * @param {Blob} encryptedBlob - Encrypted file blob
+     * @param {CryptoKey} masterKey - Master key
+     * @param {Function} progressCallback - Progress callback
+     * @returns {Promise<ArrayBuffer>}
+     */
+    async decryptFileInChunks(encryptedBlob, masterKey, progressCallback = null) {
+        // Skip the main IV (first 12 bytes)
+        let offset = this.IV_SIZE;
+        const decryptedChunks = [];
+        const totalSize = encryptedBlob.size;
+        
+        while (offset < totalSize) {
+            // Read chunk size (4 bytes)
+            const sizeBlob = encryptedBlob.slice(offset, offset + 4);
+            if (sizeBlob.size < 4) break;
+            
+            const sizeBuffer = await sizeBlob.arrayBuffer();
+            const chunkSize = new Uint32Array(sizeBuffer)[0];
+            offset += 4;
+            
+            // Read chunk IV (12 bytes)
+            const chunkIvBlob = encryptedBlob.slice(offset, offset + this.IV_SIZE);
+            const chunkIv = new Uint8Array(await chunkIvBlob.arrayBuffer());
+            offset += this.IV_SIZE;
+            
+            // Read encrypted chunk data
+            const encChunkBlob = encryptedBlob.slice(offset, offset + chunkSize);
+            const chunkData = await encChunkBlob.arrayBuffer();
+            
+            // Decrypt chunk
+            const decryptedChunk = await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv: chunkIv },
+                masterKey,
+                chunkData
+            );
+            
+            decryptedChunks.push(new Uint8Array(decryptedChunk));
+            offset += chunkSize;
+            
+            if (progressCallback) {
+                const processed = offset - this.IV_SIZE;
+                progressCallback(processed, totalSize - this.IV_SIZE);
+            }
+            
+            // Allow browser to breathe
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        
+        // Combine all decrypted chunks
+        const totalLength = decryptedChunks.reduce((acc, chunk) => acc + chunk.length, 0);
+        const result = new Uint8Array(totalLength);
+        let position = 0;
+        for (const chunk of decryptedChunks) {
+            result.set(chunk, position);
+            position += chunk.length;
+        }
+        
+        return result.buffer;
+    },
+
+    /**
      * Decrypt file data
      * @param {ArrayBuffer} encryptedData - Encrypted file data (IV + encrypted data)
      * @param {CryptoKey} masterKey - Master key as CryptoKey

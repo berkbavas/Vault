@@ -175,6 +175,40 @@ const API = {
             });
         },
 
+        /**
+         * Download file with range support
+         * @param {number} fileId - File ID
+         * @param {number} start - Start byte position
+         * @param {number} end - End byte position
+         */
+        async downloadRange(fileId, start, end) {
+            return await fetch(`${API.baseURL}/file/download.php?id=${fileId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${API.token}`,
+                    'Range': `bytes=${start}-${end}`
+                }
+            });
+        },
+
+        /**
+         * Get file size for range-based download
+         */
+        async getFileSize(fileId) {
+            const response = await fetch(`${API.baseURL}/file/download.php?id=${fileId}`, {
+                method: 'HEAD',
+                headers: {
+                    'Authorization': `Bearer ${API.token}`
+                }
+            });
+            
+            if (!response.ok) {
+                throw new Error('Failed to get file size');
+            }
+            
+            return parseInt(response.headers.get('Content-Length'), 10);
+        },
+
         async delete(fileId) {
             return await API.request('/file/delete.php', {
                 method: 'POST',

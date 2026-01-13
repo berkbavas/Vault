@@ -184,15 +184,108 @@ class StorageController extends Controller
 
             $fileData = $this->storageService->getFileForDownload($userId, $fileId);
 
+            // Check if file exists
+            if (!file_exists($fileData['path'])) {
+                throw new Exception('File not found');
+            }
+
+            $fileSize = $fileData['size'];
+            $filePath = $fileData['path'];
+
+            // Handle HEAD request (for getting file size)
+            if ($_SERVER['REQUEST_METHOD'] === 'HEAD') {
+                header('Content-Type: application/octet-stream');
+                header('Content-Length: ' . $fileSize);
+                header('Accept-Ranges: bytes');
+                header('Cache-Control: no-cache, must-revalidate');
+                exit;
+            }
+
+            // Check if Range header is present (for resumable downloads)
+            $rangeHeader = isset($_SERVER['HTTP_RANGE']) ? $_SERVER['HTTP_RANGE'] : null;
+            
+            $start = 0;
+            $end = $fileSize - 1;
+            $isRangeRequest = false;
+
+            if ($rangeHeader !== null) {
+                // Parse Range header (e.g., "bytes=0-1023")
+                if (preg_match('/bytes=(\d+)-(\d*)/', $rangeHeader, $matches)) {
+                    $start = intval($matches[1]);
+                    $end = !empty($matches[2]) ? intval($matches[2]) : $fileSize - 1;
+                    $isRangeRequest = true;
+                }
+            }
+
+            // Validate range
+            if ($start > $end || $start < 0 || $end >= $fileSize) {
+                header('HTTP/1.1 416 Requested Range Not Satisfiable');
+                header("Content-Range: bytes */$fileSize");
+                exit;
+            }
+
+            $contentLength = $end - $start + 1;
+
+            // Set appropriate status code
+            if ($isRangeRequest) {
+                header('HTTP/1.1 206 Partial Content');
+                header("Content-Range: bytes $start-$end/$fileSize");
+            } else {
+                header('HTTP/1.1 200 OK');
+            }
+
             // Set headers for download
             header('Content-Type: application/octet-stream');
             header('Content-Disposition: attachment; filename="' . $fileData['encrypted_name'] . '"');
-            header('Content-Length: ' . $fileData['size']);
+            header('Content-Length: ' . $contentLength);
+            header('Accept-Ranges: bytes');
             header('Cache-Control: no-cache, must-revalidate');
             header('Pragma: public');
 
-            // Read and output file
-            readfile($fileData['path']);
+            // Disable output buffering
+            if (ob_get_level()) {
+                ob_end_clean();
+            }
+
+            // Open file for reading
+            $handle = fopen($filePath, 'rb');
+            if ($handle === false) {
+                throw new Exception('Cannot open file for reading');
+            }
+
+            // Seek to start position if range request
+            if ($start > 0) {
+                fseek($handle, $start);
+            }
+
+            // Stream file in chunks (8MB chunks to save memory)
+            $chunkSize = 8 * 1024 * 1024; // 8MB chunks
+            $bytesRemaining = $contentLength;
+            
+            while (!feof($handle) && $bytesRemaining > 0) {
+                $readSize = min($chunkSize, $bytesRemaining);
+                $chunk = fread($handle, $readSize);
+                
+                if ($chunk === false) {
+                    break;
+                }
+                
+                echo $chunk;
+                $bytesRemaining -= strlen($chunk);
+                
+                // Flush output buffers to send data immediately
+                if (ob_get_level()) {
+                    ob_flush();
+                }
+                flush();
+                
+                // Check if client disconnected
+                if (connection_status() != CONNECTION_NORMAL) {
+                    break;
+                }
+            }
+
+            fclose($handle);
             exit;
         } catch (Exception $e) {
             return $this->error($e->getMessage(), 404)->send();

@@ -438,56 +438,57 @@ const App = {
 
     /**
      * Get file icon based on file extension
+     * Returns object with icon class and color class
      */
     getFileIcon(filename) {
         const ext = filename.toLowerCase().split('.').pop();
 
         // Image files
         if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(ext)) {
-            return 'fa-file-image';
+            return { icon: 'fa-file-image', color: 'image' };
         }
 
         // Video files
         if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'webm'].includes(ext)) {
-            return 'fa-file-video';
+            return { icon: 'fa-file-video', color: 'video' };
         }
 
         // Audio files
         if (['mp3', 'wav', 'ogg', 'flac', 'm4a'].includes(ext)) {
-            return 'fa-file-audio';
+            return { icon: 'fa-file-audio', color: 'audio' };
         }
 
         // Document files
         if (['doc', 'docx'].includes(ext)) {
-            return 'fa-file-word';
+            return { icon: 'fa-file-word', color: 'document' };
         }
         if (['xls', 'xlsx'].includes(ext)) {
-            return 'fa-file-excel';
+            return { icon: 'fa-file-excel', color: 'document' };
         }
         if (['ppt', 'pptx'].includes(ext)) {
-            return 'fa-file-powerpoint';
+            return { icon: 'fa-file-powerpoint', color: 'document' };
         }
         if (ext === 'pdf') {
-            return 'fa-file-pdf';
+            return { icon: 'fa-file-pdf', color: 'pdf' };
         }
 
         // Archive files
         if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
-            return 'fa-file-archive';
+            return { icon: 'fa-file-archive', color: 'archive' };
         }
 
         // Code files
         if (['html', 'css', 'js', 'php', 'py', 'java', 'c', 'cpp', 'json', 'xml'].includes(ext)) {
-            return 'fa-file-code';
+            return { icon: 'fa-file-code', color: 'code' };
         }
 
         // Text files
         if (['txt', 'md', 'rtf'].includes(ext)) {
-            return 'fa-file-alt';
+            return { icon: 'fa-file-alt', color: 'text' };
         }
 
         // Default
-        return 'fa-file';
+        return { icon: 'fa-file', color: 'default' };
     },
 
     /**
@@ -499,7 +500,6 @@ const App = {
             this.toggleAllSelections(false);
             this.updateBulkActions();
 
-            showLoading('Loading files...');
 
             const response = await API.files.list(folderId);
             if (!response.success) {
@@ -510,11 +510,9 @@ const App = {
             await this.renderFileList();
             this.updateBreadcrumb();
 
-            hideLoading();
         } catch (error) {
             console.error('Load files error:', error);
             showToast(error.message || 'Failed to load files', 'error');
-            hideLoading();
         }
     },
 
@@ -581,9 +579,17 @@ const App = {
             nameDiv.style.cursor = 'pointer';
         }
 
-        const iconClass = file.type === 'folder' ? 'fa-folder-open' : this.getFileIcon(displayName);
+        let iconClass, colorClass;
+        if (file.type === 'folder') {
+            iconClass = 'fa-folder-open';
+            colorClass = 'folder';
+        } else {
+            const iconData = this.getFileIcon(displayName);
+            iconClass = iconData.icon;
+            colorClass = iconData.color;
+        }
         nameDiv.innerHTML = `
-                <i class="fas ${iconClass} file-icon ${file.type === 'folder' ? 'folder' : 'file'}"></i>
+                <i class="fas ${iconClass} file-icon ${colorClass}"></i>
                 <span>${escapeHtml(displayName)}</span>
             `;
         nameTd.appendChild(nameDiv);
@@ -640,7 +646,15 @@ const App = {
         card.className = 'file-card';
         card.dataset.fileId = file.id;
 
-        const iconClass = file.type === 'folder' ? 'fa-folder-open' : this.getFileIcon(displayName);
+        let iconClass, colorClass;
+        if (file.type === 'folder') {
+            iconClass = 'fa-folder-open';
+            colorClass = 'folder';
+        } else {
+            const iconData = this.getFileIcon(displayName);
+            iconClass = iconData.icon;
+            colorClass = iconData.color;
+        }
         const size = file.type === 'folder' ? '' : formatFileSize(file.original_size);
         const date = formatDate(file.created_at);
 
@@ -650,7 +664,7 @@ const App = {
                        onchange="App.toggleFileSelection(${file.id}, this.checked)">
             </div>
             <div class="file-card-content" ${file.type === 'folder' ? `onclick="App.openFolder(${file.id}, '${escapeHtml(displayName)}')" style="cursor: pointer;"` : ''}>
-                <div class="file-card-icon ${file.type === 'folder' ? 'folder' : 'file'}">
+                <div class="file-card-icon ${colorClass}">
                     <i class="fas ${iconClass}"></i>
                 </div>
                 <div class="file-card-name">${escapeHtml(displayName)}</div>
@@ -667,6 +681,9 @@ const App = {
                 ` : ''}
                 <button class="action-btn" onclick="App.showRenameModal(${file.id}, '${escapeHtml(displayName)}')" title="Rename">
                     <i class="fas fa-edit"></i>
+                </button>
+                <button class="action-btn" onclick="App.showMoveModal(${file.id})" title="Move">
+                    <i class="fas fa-arrows-alt"></i>
                 </button>
                 <button class="action-btn danger" onclick="App.deleteFile(${file.id}, '${escapeHtml(displayName)}')" title="Delete">
                     <i class="fas fa-trash"></i>
@@ -777,16 +794,19 @@ const App = {
             for (const file of files) {
                 showLoading(`Encrypting ${file.name}...`);
 
-                // Read file
-                const fileData = await file.arrayBuffer();
-
-                // Encrypt file
-                const encryptedData = await CryptoUtils.encryptFile(fileData, this.masterKey);
+                // Encrypt file in chunks to save memory
+                const encryptedBlob = await CryptoUtils.encryptFileInChunks(
+                    file,
+                    this.masterKey,
+                    (processed, total) => {
+                        const percent = Math.round((processed / total) * 100);
+                        updateLoadingText(`Encrypting ${file.name}: ${percent}%`);
+                    }
+                );
 
                 // Encrypt filename
                 const encryptedName = await CryptoUtils.encryptFilename(file.name, this.masterKey);
 
-                const encryptedBlob = new Blob([encryptedData]);
                 const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
                 const USE_CHUNKED = encryptedBlob.size > CHUNK_SIZE;
 
@@ -891,45 +911,76 @@ const App = {
     },
 
     /**
-     * Download file with progress tracking
+     * Download file with range-based parallel downloading
      */
     async downloadFile(fileId, filename) {
         try {
-            showLoading(`Downloading ${filename}...`);
+            showLoading(`Preparing download for ${filename}...`);
 
-            const response = await API.files.download(fileId);
-            if (!response.ok) {
-                throw new Error('Download failed');
-            }
-
-            // Track download progress
-            const contentLength = response.headers.get('Content-Length');
-            const total = parseInt(contentLength, 10);
-            let loaded = 0;
-
-            const reader = response.body.getReader();
-            const chunks = [];
-
-            while (true) {
-                const { done, value } = await reader.read();
-                if (done) break;
-
-                chunks.push(value);
-                loaded += value.length;
-
-                if (total) {
-                    const percent = Math.round((loaded / total) * 100);
-                    updateLoadingText(`Downloading ${filename}: ${percent}%`);
+            // Get file size first
+            const fileSize = await API.files.getFileSize(fileId);
+            
+            // Use parallel range-based download for files larger than 5MB
+            const USE_RANGE_DOWNLOAD = fileSize > 5 * 1024 * 1024;
+            
+            let encryptedBlob;
+            
+            if (USE_RANGE_DOWNLOAD) {
+                encryptedBlob = await this.downloadFileInRanges(fileId, fileSize, filename);
+            } else {
+                // Standard download for small files
+                const response = await API.files.download(fileId);
+                if (!response.ok) {
+                    throw new Error('Download failed');
                 }
+
+                // Track download progress
+                const contentLength = response.headers.get('Content-Length');
+                const total = parseInt(contentLength, 10);
+                let loaded = 0;
+
+                const reader = response.body.getReader();
+                const chunks = [];
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    chunks.push(value);
+                    loaded += value.length;
+
+                    if (total) {
+                        const percent = Math.round((loaded / total) * 100);
+                        updateLoadingText(`Downloading ${filename}: ${percent}%`);
+                    }
+                }
+                
+                encryptedBlob = new Blob(chunks);
             }
 
             updateLoadingText(`Decrypting ${filename}...`);
 
-            const encryptedBlob = new Blob(chunks);
-            const encryptedData = await encryptedBlob.arrayBuffer();
-
-            // Decrypt file
-            const decryptedData = await CryptoUtils.decryptFile(encryptedData, this.masterKey);
+            // Try to detect format: new chunked format has size markers after main IV
+            // Old format: [IV(12)] + [encrypted_data]
+            // New format: [IV(12)] + [size(4) + chunkIV(12) + encrypted_data] + ...
+            let decryptedData;
+            
+            try {
+                // Try new chunked format first
+                decryptedData = await CryptoUtils.decryptFileInChunks(
+                    encryptedBlob,
+                    this.masterKey,
+                    (processed, total) => {
+                        const percent = Math.round((processed / total) * 100);
+                        updateLoadingText(`Decrypting ${filename}: ${percent}%`);
+                    }
+                );
+            } catch (error) {
+                console.log('Trying legacy decryption format...');
+                // Fall back to old format
+                const encryptedData = await encryptedBlob.arrayBuffer();
+                decryptedData = await CryptoUtils.decryptFile(encryptedData, this.masterKey);
+            }
 
             // Create blob and download
             const blob = new Blob([decryptedData]);
@@ -949,6 +1000,61 @@ const App = {
             showToast(error.message || 'Download failed', 'error');
             hideLoading();
         }
+    },
+
+    /**
+     * Download file in parallel ranges with retry support
+     */
+    async downloadFileInRanges(fileId, fileSize, filename) {
+        const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB per chunk
+        const MAX_PARALLEL = 3; // Download 3 chunks in parallel
+        const MAX_RETRIES = 3;
+        
+        const totalChunks = Math.ceil(fileSize / CHUNK_SIZE);
+        const chunks = new Array(totalChunks);
+        let downloadedBytes = 0;
+        
+        // Download chunk with retry logic
+        const downloadChunk = async (chunkIndex, retries = 0) => {
+            const start = chunkIndex * CHUNK_SIZE;
+            const end = Math.min(start + CHUNK_SIZE - 1, fileSize - 1);
+            
+            try {
+                const response = await API.files.downloadRange(fileId, start, end);
+                
+                if (!response.ok) {
+                    throw new Error(`Chunk ${chunkIndex} download failed: ${response.status}`);
+                }
+                
+                const chunkData = await response.arrayBuffer();
+                chunks[chunkIndex] = new Uint8Array(chunkData);
+                
+                downloadedBytes += chunkData.byteLength;
+                const percent = Math.round((downloadedBytes / fileSize) * 100);
+                updateLoadingText(`Downloading ${filename}: ${percent}%`);
+                
+                return true;
+            } catch (error) {
+                if (retries < MAX_RETRIES) {
+                    console.log(`Retrying chunk ${chunkIndex}, attempt ${retries + 1}/${MAX_RETRIES}`);
+                    await new Promise(resolve => setTimeout(resolve, 1000 * (retries + 1)));
+                    return downloadChunk(chunkIndex, retries + 1);
+                }
+                throw error;
+            }
+        };
+        
+        // Download chunks in parallel batches
+        for (let i = 0; i < totalChunks; i += MAX_PARALLEL) {
+            const batch = [];
+            for (let j = 0; j < MAX_PARALLEL && (i + j) < totalChunks; j++) {
+                batch.push(downloadChunk(i + j));
+            }
+            await Promise.all(batch);
+        }
+        
+        // Combine all chunks into a single blob
+        return new Blob(chunks);
     },
 
     /**
