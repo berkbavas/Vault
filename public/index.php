@@ -145,6 +145,14 @@
                     </button>
 
                     <input type="file" id="file-input" multiple class="hidden" />
+
+                    <div id="bulk-actions" class="bulk-actions" style="display: none;">
+                        <button id="bulk-delete-btn" class="btn btn-danger btn-wide" type="button">
+                            <i class="fa-solid fa-trash"></i>
+                            Delete
+                            <span class="badge" id="selected-count">0</span>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="sidebar-card">
@@ -201,13 +209,7 @@
                 </div>
 
                 <div class="topbar-right">
-                    <div id="bulk-actions" class="bulk-actions" style="display: none;">
-                        <button id="bulk-delete-btn" class="btn btn-danger" type="button">
-                            <i class="fa-solid fa-trash"></i>
-                            Delete
-                            <span class="badge" id="selected-count">0</span>
-                        </button>
-                    </div>
+
                 </div>
             </header>
 
