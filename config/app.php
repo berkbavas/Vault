@@ -72,7 +72,7 @@ return [
      * Generate a strong secret: openssl rand -base64 32
      */
     'jwt' => [
-        'secret' => 'ssCU1ZKqDMu7A3qRCZoOKEYzV5F0b0xG9hY2r3F4j8g=',
+        'secret' => 'ssCU1ZKqDMu7A3qRCZoOKEY',
         'algorithm' => 'HS256',
         'expiration' => 86400, // 24 hours in seconds
         'refresh_expiration' => 604800, // 7 days in seconds
