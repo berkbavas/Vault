@@ -628,7 +628,7 @@ const App = {
                     <i class="fas fa-arrows-alt"></i>
                 </button>
                 <button class="action-btn danger" onclick="App.deleteFile(${file.id}, '${escapeHtml(displayName)}')" title="Delete">
-                    <i class="fas fa-trash"></i>
+                    <i class="fa-regular fa-trash-can"></i>
                 </button>
             `;
 
@@ -686,7 +686,7 @@ const App = {
                     <i class="fas fa-arrows-alt"></i>
                 </button>
                 <button class="action-btn danger" onclick="App.deleteFile(${file.id}, '${escapeHtml(displayName)}')" title="Delete">
-                    <i class="fas fa-trash"></i>
+                    <i class="fa-regular fa-trash-can"></i>
                 </button>
             </div>
         `;

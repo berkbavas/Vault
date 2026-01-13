@@ -667,7 +667,7 @@ input {
 	padding: 12px;
 	border-bottom: 1px dashed rgba(92, 255, 122, 0.14);
 	text-align: left;
-	font-size: 16px;
+	font-size: 14px;
 }
 
 .file-list thead th {
@@ -682,49 +682,8 @@ input {
 }
 
 .file-icon {
-	font-size: 16px;
+	font-size: 18px;
 	margin-right: 8px;
-}
-
-/* Keep type colors, but tint terminal-like */
-.file-icon.folder {
-	color: var(--warn);
-}
-
-.file-icon.image {
-	color: #b39bff;
-}
-
-.file-icon.video {
-	color: #ff7bd4;
-}
-
-.file-icon.audio {
-	color: #60f2ff;
-}
-
-.file-icon.document {
-	color: #7bb6ff;
-}
-
-.file-icon.pdf {
-	color: #ff6b6b;
-}
-
-.file-icon.archive {
-	color: #ffd24a;
-}
-
-.file-icon.code {
-	color: #5CFF7A;
-}
-
-.file-icon.text {
-	color: #9fe7aa;
-}
-
-.file-icon.default {
-	color: var(--primary-2);
 }
 
 .file-actions {
@@ -744,8 +703,7 @@ input {
 	align-items: center;
 	justify-content: center;
 	gap: 8px;
-	font-weight: 900;
-	font-size: 12px;
+	font-size: 14px;
 }
 
 .action-btn:hover {
@@ -1243,8 +1201,8 @@ select:-webkit-autofill {
 	caret-color: var(--text) !important;
 
 	/* Asıl trik: içini box-shadow ile boyuyoruz */
-	-webkit-box-shadow: 0 0 0px 1000px rgba(0, 0, 0, 0.22) inset !important;
-	box-shadow: 0 0 0px 1000px rgba(0, 0, 0, 0.22) inset !important;
+	-webkit-box-shadow: 0 0 0px 1000px rgba(0, 0, 0, 0.9) inset !important;
+	box-shadow: 0 0 0px 1000px rgba(0, 0, 0, 0.9) inset !important;
 
 	border: 0 !important;
 	/* input-group border zaten var */
