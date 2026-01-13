@@ -134,6 +134,31 @@
                     </div>
                 </div>
 
+                <div class="user-card">
+                    <div class="user-avatar" aria-hidden="true"><i class="fa-regular fa-user"></i></div>
+                    <div class="user-meta">
+                        <div class="user-name" id="username-display"></div>
+                        <div class="user-sub">Encrypted session</div>
+                    </div>
+                </div>
+
+                <div class="sidebar-card">
+                    <div class="sidebar-card-title">Storage</div>
+                    <div class="quota-mini">
+                        <div class="quota-row">
+                            <span class="quota-label"><i class="fa-solid fa-database"></i> Used</span>
+                            <span class="quota-value"><span id="quota-used">0</span> / <span id="quota-total">0</span></span>
+                        </div>
+                        <div class="quota-bar" aria-hidden="true">
+                            <div id="quota-bar-fill" class="quota-bar-fill" style="width: 0%"></div>
+                        </div>
+                        <div class="quota-row quota-row-bottom">
+                            <span class="quota-hint">Usage</span>
+                            <span id="quota-percentage" class="quota-percent">0%</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="sidebar-actions">
                     <button id="upload-btn" class="btn btn-primary btn-wide" type="button">
                         <i class="fa-solid fa-upload"></i>
@@ -156,33 +181,10 @@
                     </div>
                 </div>
 
-                <div class="sidebar-card">
-                    <div class="sidebar-card-title">Storage</div>
-                    <div class="quota-mini">
-                        <div class="quota-row">
-                            <span class="quota-label"><i class="fa-solid fa-database"></i> Used</span>
-                            <span class="quota-value"><span id="quota-used">0</span> / <span id="quota-total">0</span></span>
-                        </div>
-                        <div class="quota-bar" aria-hidden="true">
-                            <div id="quota-bar-fill" class="quota-bar-fill" style="width: 0%"></div>
-                        </div>
-                        <div class="quota-row quota-row-bottom">
-                            <span class="quota-hint">Usage</span>
-                            <span id="quota-percentage" class="quota-percent">0%</span>
-                        </div>
-                    </div>
-                </div>
+
             </div>
 
             <div class="sidebar-bottom">
-                <div class="user-card">
-                    <div class="user-avatar" aria-hidden="true"><i class="fa-regular fa-user"></i></div>
-                    <div class="user-meta">
-                        <div class="user-name" id="username-display"></div>
-                        <div class="user-sub">Encrypted session</div>
-                    </div>
-                </div>
-
                 <div class="sidebar-actions">
                     <button id="change-password-btn" class="btn btn-tertiary btn-wide" type="button" title="Change Password">
                         <i class="fa-solid fa-lock"></i>
