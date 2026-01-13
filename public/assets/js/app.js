@@ -200,7 +200,7 @@ const App = {
     async handleRegister() {
         const username = document.getElementById('register-username').value.trim();
         const password = document.getElementById('register-password').value;
-        const confirmPassword = document.getElementById('register-password-confirm').value;
+        const confirmPassword = document.getElementById('register-confirm-password').value;
 
         if (!username || !password || !confirmPassword) {
             showToast('Please fill in all fields', 'error');
@@ -212,8 +212,8 @@ const App = {
             return;
         }
 
-        if (password.length < 8) {
-            showToast('Password must be at least 8 characters', 'error');
+        if (password.length < 4) {
+            showToast('Password must be at least 4 characters', 'error');
             return;
         }
 
@@ -529,6 +529,8 @@ const App = {
             document.querySelector('.file-list').style.display = 'none';
             document.querySelector('.file-cards').style.display = 'none';
             document.getElementById('empty-state').classList.remove('hidden');
+            text = this.currentFolderId === null ? "There are no files" : "This folder is empty";
+            document.getElementById('empty-title').innerText = text;
             return;
         }
 
