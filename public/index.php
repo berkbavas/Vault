@@ -14,7 +14,8 @@
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
-    <link rel="stylesheet" href="assets/css/styles.css?v=<?php echo filemtime('assets/css/styles.css'); ?>" />
+    <!-- Theme Styles (dynamically loaded) -->
+    <link rel="stylesheet" id="theme-stylesheet" href="" />
 </head>
 
 <body>
@@ -209,7 +210,9 @@
                 </div>
 
                 <div class="topbar-right">
-
+                    <button id="theme-toggle" class="icon-btn" type="button" aria-label="Toggle theme" title="Toggle theme">
+                        <i class="fa-solid fa-moon"></i>
+                    </button>
                 </div>
             </header>
 
@@ -341,6 +344,56 @@
     <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <script>
+        // Theme Management
+        (function() {
+            const themeStylesheet = document.getElementById('theme-stylesheet');
+            const themeToggleBtn = document.getElementById('theme-toggle');
+            const themes = {
+                light: 'assets/css/styles-light.css',
+                terminal: 'assets/css/styles-terminal.css'
+            };
+
+            // Get saved theme or default to light
+            function getCurrentTheme() {
+                return localStorage.getItem('theme') || 'light';
+            }
+
+            // Apply theme
+            function applyTheme(themeName) {
+                const timestamp = new Date().getTime();
+                themeStylesheet.href = `${themes[themeName]}?v=${timestamp}`;
+                localStorage.setItem('theme', themeName);
+                updateThemeIcon(themeName);
+            }
+
+            // Update icon based on theme
+            function updateThemeIcon(themeName) {
+                const icon = themeToggleBtn.querySelector('i');
+                if (themeName === 'light') {
+                    icon.className = 'fa-solid fa-moon';
+                    themeToggleBtn.title = 'Switch to Terminal theme';
+                } else {
+                    icon.className = 'fa-solid fa-sun';
+                    themeToggleBtn.title = 'Switch to Light theme';
+                }
+            }
+
+            // Toggle theme
+            function toggleTheme() {
+                const currentTheme = getCurrentTheme();
+                const newTheme = currentTheme === 'light' ? 'terminal' : 'light';
+                applyTheme(newTheme);
+            }
+
+            // Initialize theme
+            applyTheme(getCurrentTheme());
+
+            // Add event listener
+            if (themeToggleBtn) {
+                themeToggleBtn.addEventListener('click', toggleTheme);
+            }
+        })();
+
         // UI-only: sidebar drawer on mobile + auth tabs (keeps existing App event listeners too)
         (function() {
             const shell = document.documentElement;
