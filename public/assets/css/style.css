@@ -253,6 +253,7 @@ input {
 	border: 0;
 	outline: none;
 	padding: 12px 12px;
+	font: var(--mono);
 	font-size: 14px;
 	color: var(--text);
 	background: transparent;
@@ -623,6 +624,7 @@ input::placeholder {
 	display: flex;
 	align-items: center;
 	gap: 10px;
+	transition: opacity 0.4s ease;
 }
 
 .content {

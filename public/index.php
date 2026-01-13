@@ -9,12 +9,14 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap"
+        rel="stylesheet">
 
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
-    <link rel="stylesheet" href="./assets/css/style.css?v=<?php echo filemtime('./assets/css/style.css')?>" />
+    <link rel="stylesheet" href="./assets/css/style.css?v=<?php echo filemtime('./assets/css/style.css') ?>" />
 </head>
 
 <body>
@@ -52,14 +54,16 @@
                     <div class="field">
                         <div class="input-group">
                             <span class="input-icon"><i class="fa-regular fa-user"></i></span>
-                            <input id="login-username" type="text" autocomplete="username" placeholder="Username" required />
+                            <input id="login-username" type="text" autocomplete="username" placeholder="Username"
+                                required />
                         </div>
                     </div>
 
                     <div class="field">
                         <div class="input-group">
                             <span class="input-icon"><i class="fa-solid fa-key"></i></span>
-                            <input id="login-password" type="password" autocomplete="current-password" placeholder="Password" required />
+                            <input id="login-password" type="password" autocomplete="current-password"
+                                placeholder="Password" required />
                         </div>
                     </div>
 
@@ -78,21 +82,24 @@
                     <div class="field">
                         <div class="input-group">
                             <span class="input-icon"><i class="fa-regular fa-user"></i></span>
-                            <input id="register-username" type="text" autocomplete="username" placeholder="Choose a username" required />
+                            <input id="register-username" type="text" autocomplete="username"
+                                placeholder="Choose a username" required />
                         </div>
                     </div>
 
                     <div class="field">
                         <div class="input-group">
                             <span class="input-icon"><i class="fa-solid fa-lock"></i></span>
-                            <input id="register-password" type="password" autocomplete="new-password" placeholder="Create a password" required />
+                            <input id="register-password" type="password" autocomplete="new-password"
+                                placeholder="Create a password" required />
                         </div>
                     </div>
 
                     <div class="field">
                         <div class="input-group">
                             <span class="input-icon"><i class="fa-solid fa-lock"></i></span>
-                            <input id="register-confirm-password" type="password" autocomplete="new-password" placeholder="Repeat password" required />
+                            <input id="register-confirm-password" type="password" autocomplete="new-password"
+                                placeholder="Repeat password" required />
                         </div>
                     </div>
 
@@ -146,7 +153,8 @@
                     <div class="quota-mini">
                         <div class="quota-row">
                             <span class="quota-label"><i class="fa-solid fa-database"></i> Used</span>
-                            <span class="quota-value"><span id="quota-used">0</span> / <span id="quota-total">0</span></span>
+                            <span class="quota-value"><span id="quota-used">0</span> / <span
+                                    id="quota-total">0</span></span>
                         </div>
                         <div class="quota-bar" aria-hidden="true">
                             <div id="quota-bar-fill" class="quota-bar-fill" style="width: 0%"></div>
@@ -171,7 +179,7 @@
 
                     <input type="file" id="file-input" multiple class="hidden" />
 
-                    <div id="bulk-actions" class="bulk-actions" style="display: none;">
+                    <div id="bulk-actions" class="bulk-actions" style="opacity: 0;">
                         <button id="bulk-delete-btn" class="btn btn-danger btn-wide" type="button">
                             <i class="fa-solid fa-trash"></i>
                             Delete
@@ -185,7 +193,8 @@
 
             <div class="sidebar-bottom">
                 <div class="sidebar-actions">
-                    <button id="change-password-btn" class="btn btn-tertiary btn-wide" type="button" title="Change Password">
+                    <button id="change-password-btn" class="btn btn-tertiary btn-wide" type="button"
+                        title="Change Password">
                         <i class="fa-solid fa-lock"></i>
                         Change password
                     </button>
@@ -262,16 +271,16 @@
             </div>
             <form id="change-password-form" class="modal-body">
                 <div class="field">
-                    <label for="current-password">Current password</label>
-                    <input type="password" id="current-password" required autocomplete="current-password" placeholder="Current password">
+                    <input type="password" id="current-password" required autocomplete="current-password"
+                        placeholder="Current password">
                 </div>
                 <div class="field">
-                    <label for="new-password">New password</label>
-                    <input type="password" id="new-password" required autocomplete="new-password" placeholder="New password">
+                    <input type="password" id="new-password" required autocomplete="new-password"
+                        placeholder="New password">
                 </div>
                 <div class="field">
-                    <label for="confirm-new-password">Confirm new password</label>
-                    <input type="password" id="confirm-new-password" required autocomplete="new-password" placeholder="Repeat new password">
+                    <input type="password" id="confirm-new-password" required autocomplete="new-password"
+                        placeholder="Repeat new password">
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeChangePasswordModal()">Cancel</button>
@@ -343,7 +352,7 @@
 
     <script>
         // UI-only: sidebar drawer on mobile + auth tabs (keeps existing App event listeners too)
-        (function() {
+        (function () {
             const shell = document.documentElement;
             const toggle = document.getElementById('sidebar-toggle');
             const app = document.getElementById('app-container');

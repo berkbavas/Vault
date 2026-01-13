@@ -708,7 +708,7 @@ const App = {
 
         // Container
         if (bulkActions) {
-            bulkActions.style.display = hasSelection ? 'flex' : 'none';
+            bulkActions.style.opacity = hasSelection ? 1 : 0;
         }
 
         // Button (defensive: in case container styling changes later)
