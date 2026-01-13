@@ -1071,10 +1071,11 @@ input {
 		inset: 0 auto 0 0;
 		width: 86vw;
 		max-width: 340px;
-		transform: translateX(-102%);
 		transition: transform .16s ease-out;
 		box-shadow: var(--shadow-lg);
 		z-index: 20;
+		transform: translateX(-100%);
+		justify-content: flex-start;
 	}
 
 	.app-shell.sidebar-open .sidebar {
