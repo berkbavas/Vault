@@ -376,9 +376,9 @@ const App = {
         this.updateBulkActions();
     },
 
-        /**
-     * Update bulk actions visibility
-     */
+    /**
+ * Update bulk actions visibility
+ */
     updateBulkActions() {
         const bulkActions = document.getElementById('bulk-actions');
         const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
@@ -400,9 +400,9 @@ const App = {
             selectedCount.textContent = String(this.selectedItems.size);
         }
     },
-/**
-     * Delete selected files
-     */
+    /**
+         * Delete selected files
+         */
     async deleteSelectedFiles() {
         if (this.selectedItems.size === 0) {
             showToast('No files selected', 'error');
@@ -670,8 +670,8 @@ const App = {
                 <div class="file-card-name">${escapeHtml(displayName)}</div>
                 <div class="file-card-meta">
                     ${file.type === 'file' ? `<span>${size}</span>` : '<span>Folder</span>'}
-                    <span>${date}</span>
                 </div>
+                <span>${date}</span>
             </div>
             <div class="file-card-actions">
                 ${file.type === 'file' ? `
@@ -694,9 +694,9 @@ const App = {
         container.appendChild(card);
     },
 
-        /**
-     * Update bulk actions visibility
-     */
+    /**
+ * Update bulk actions visibility
+ */
     updateBulkActions() {
         const bulkActions = document.getElementById('bulk-actions');
         const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
@@ -718,9 +718,9 @@ const App = {
             selectedCount.textContent = String(this.selectedItems.size);
         }
     },
-/**
-     * Update breadcrumb navigation
-     */
+    /**
+         * Update breadcrumb navigation
+         */
     updateBreadcrumb() {
         const breadcrumb = document.getElementById('breadcrumb');
         breadcrumb.innerHTML = '';
@@ -919,12 +919,12 @@ const App = {
 
             // Get file size first
             const fileSize = await API.files.getFileSize(fileId);
-            
+
             // Use parallel range-based download for files larger than 5MB
             const USE_RANGE_DOWNLOAD = fileSize > 5 * 1024 * 1024;
-            
+
             let encryptedBlob;
-            
+
             if (USE_RANGE_DOWNLOAD) {
                 encryptedBlob = await this.downloadFileInRanges(fileId, fileSize, filename);
             } else {
@@ -954,7 +954,7 @@ const App = {
                         updateLoadingText(`Downloading ${filename}: ${percent}%`);
                     }
                 }
-                
+
                 encryptedBlob = new Blob(chunks);
             }
 
@@ -964,7 +964,7 @@ const App = {
             // Old format: [IV(12)] + [encrypted_data]
             // New format: [IV(12)] + [size(4) + chunkIV(12) + encrypted_data] + ...
             let decryptedData;
-            
+
             try {
                 // Try new chunked format first
                 decryptedData = await CryptoUtils.decryptFileInChunks(
@@ -1009,30 +1009,30 @@ const App = {
         const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB per chunk
         const MAX_PARALLEL = 3; // Download 3 chunks in parallel
         const MAX_RETRIES = 3;
-        
+
         const totalChunks = Math.ceil(fileSize / CHUNK_SIZE);
         const chunks = new Array(totalChunks);
         let downloadedBytes = 0;
-        
+
         // Download chunk with retry logic
         const downloadChunk = async (chunkIndex, retries = 0) => {
             const start = chunkIndex * CHUNK_SIZE;
             const end = Math.min(start + CHUNK_SIZE - 1, fileSize - 1);
-            
+
             try {
                 const response = await API.files.downloadRange(fileId, start, end);
-                
+
                 if (!response.ok) {
                     throw new Error(`Chunk ${chunkIndex} download failed: ${response.status}`);
                 }
-                
+
                 const chunkData = await response.arrayBuffer();
                 chunks[chunkIndex] = new Uint8Array(chunkData);
-                
+
                 downloadedBytes += chunkData.byteLength;
                 const percent = Math.round((downloadedBytes / fileSize) * 100);
                 updateLoadingText(`Downloading ${filename}: ${percent}%`);
-                
+
                 return true;
             } catch (error) {
                 if (retries < MAX_RETRIES) {
@@ -1043,7 +1043,7 @@ const App = {
                 throw error;
             }
         };
-        
+
         // Download chunks in parallel batches
         for (let i = 0; i < totalChunks; i += MAX_PARALLEL) {
             const batch = [];
@@ -1052,7 +1052,7 @@ const App = {
             }
             await Promise.all(batch);
         }
-        
+
         // Combine all chunks into a single blob
         return new Blob(chunks);
     },
