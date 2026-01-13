@@ -624,7 +624,7 @@ input::placeholder {
 	display: flex;
 	align-items: center;
 	gap: 10px;
-	transition: opacity 0.4s ease;
+	transition: opacity 0.2s ease-in-out;
 }
 
 .content {
