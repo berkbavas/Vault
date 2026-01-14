@@ -264,7 +264,7 @@ public/assets/js/
 - **AES-256-GCM**: Authenticated encryption
 - **SHA-256**: Cryptographic hashing
 
-## ⚠️ Important Security Notes
+## Important Security Notes
 
 1. **Password Recovery**: Since this is a zero-knowledge system, **passwords cannot be recovered**. If you lose your password, your files are permanently inaccessible.
 
