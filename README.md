@@ -302,6 +302,6 @@ vault-drive/
 └── README.md          # This file
 ```
 
-## 📝 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
