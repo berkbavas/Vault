@@ -1,12 +1,12 @@
-# 🛡️ Vault Drive
+# Vault Drive
 
 A zero-knowledge, client-side encrypted file storage system built with PHP and JavaScript.
 Vault Drive ensures that your files are encrypted on the client-side before uploading,
 meaning the server never has access to your unencrypted data or encryption keys.
 
-## ✨ Features
+##  Features
 
-### 🔐 Security
+### Security
 
 - **Zero-Knowledge Architecture**: All encryption happens client-side
 - **AES-256-GCM Encryption**: Military-grade encryption for files and filenames
@@ -14,7 +14,7 @@ meaning the server never has access to your unencrypted data or encryption keys.
 - **Secure Password Hashing**: Multiple layers of hashing with unique salts
 - **Encrypted Master Keys**: User's master encryption key is encrypted with their password
 
-### 📁 File Management
+### File Management
 
 - **Upload Files**: Secure chunked upload with progress tracking
 - **Download Files**: Encrypted files are decrypted on-the-fly in the browser
@@ -24,7 +24,7 @@ meaning the server never has access to your unencrypted data or encryption keys.
 - **Delete Files/Folders**: Secure deletion with multi-select support
 - **Folder Navigation**: Browse through your folder structure
 
-## 🏗️ Architecture
+## Architecture
 
 ### Backend (PHP)
 
@@ -75,7 +75,7 @@ public/assets/js/
   - POST   /delete_multiple   # Delete multiple items
 ```
 
-## 🔧 Installation
+## Installation
 
 ### Prerequisites
 
@@ -163,7 +163,7 @@ public/assets/js/
    http://localhost/vault-drive
    ```
 
-## 🔒 Security Model
+## Security Model
 
 ### Encryption Flow
 
@@ -207,7 +207,7 @@ public/assets/js/
 4. Decrypted file is provided to user via download
 5. Filename is decrypted for display
 
-## 📊 Database Schema
+## Database Schema
 
 ### Users Table
 
@@ -243,7 +243,7 @@ public/assets/js/
 - updated_at        : Last update timestamp
 ```
 
-## 🧪 Technology Stack
+## Technology Stack
 
 ### Backend
 
@@ -283,7 +283,7 @@ Clear browser data if using a shared computer.
    - See folder structure (encrypted names)
    - Track storage usage
 
-## 🔄 Development
+## Development
 
 ### Project Structure
 
