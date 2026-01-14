@@ -425,5 +425,96 @@ const CryptoUtils = {
 
     clearMasterKeyFromSession() {
         sessionStorage.removeItem('masterKey');
+    },
+
+    /**
+     * ========================================
+     * HIERARCHICAL KEY MANAGEMENT
+     * ========================================
+     */
+
+    /**
+     * Generate a random encryption key for a file or folder (32 bytes)
+     * @returns {ArrayBuffer} Random 32-byte key
+     */
+    generateItemKey() {
+        return this.generateRandomBytes(32);
+    },
+
+    /**
+     * Encrypt an item's key with a parent key (master key or parent folder key)
+     * Uses AES-256-GCM
+     * @param {ArrayBuffer} itemKey - The key to encrypt (32 bytes)
+     * @param {CryptoKey} parentKey - The parent key to encrypt with
+     * @returns {string} Hex string (IV + ciphertext + tag)
+     */
+    async encryptItemKey(itemKey, parentKey) {
+        const iv = this.generateRandomBytes(this.IV_SIZE);
+        
+        const encrypted = await crypto.subtle.encrypt(
+            { name: 'AES-GCM', iv: iv },
+            parentKey,
+            itemKey
+        );
+
+        // Combine IV + ciphertext (which includes auth tag)
+        const combined = new Uint8Array(iv.length + encrypted.byteLength);
+        combined.set(iv, 0);
+        combined.set(new Uint8Array(encrypted), iv.length);
+
+        return this.arrayBufferToHex(combined.buffer);
+    },
+
+    /**
+     * Decrypt an item's key with a parent key
+     * @param {string} encryptedKeyHex - Hex string (IV + ciphertext + tag)
+     * @param {CryptoKey} parentKey - The parent key to decrypt with
+     * @returns {ArrayBuffer} Decrypted key (32 bytes)
+     */
+    async decryptItemKey(encryptedKeyHex, parentKey) {
+        const encryptedData = this.hexToArrayBuffer(encryptedKeyHex);
+        
+        // Extract IV and ciphertext
+        const iv = encryptedData.slice(0, this.IV_SIZE);
+        const ciphertext = encryptedData.slice(this.IV_SIZE);
+
+        const decrypted = await crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv: iv },
+            parentKey,
+            ciphertext
+        );
+
+        return decrypted;
+    },
+
+    /**
+     * Import raw key bytes as a CryptoKey
+     * @param {ArrayBuffer} rawKey - Raw key bytes
+     * @returns {CryptoKey} Imported crypto key
+     */
+    async importRawKey(rawKey) {
+        return await crypto.subtle.importKey(
+            'raw',
+            rawKey,
+            { name: 'AES-GCM' },
+            true,
+            ['encrypt', 'decrypt']
+        );
+    },
+
+    /**
+     * Re-encrypt an item's key with a new parent key
+     * Used when moving items between folders
+     * @param {string} encryptedKeyHex - Current encrypted key (hex)
+     * @param {CryptoKey} oldParentKey - Current parent key
+     * @param {CryptoKey} newParentKey - New parent key
+     * @returns {string} Re-encrypted key (hex)
+     */
+    async reencryptItemKey(encryptedKeyHex, oldParentKey, newParentKey) {
+        // Decrypt with old parent key
+        const itemKey = await this.decryptItemKey(encryptedKeyHex, oldParentKey);
+        
+        // Re-encrypt with new parent key
+        return await this.encryptItemKey(itemKey, newParentKey);
     }
 };

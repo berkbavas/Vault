@@ -7,6 +7,7 @@ const App = {
     currentUser: null,
     masterKey: null,
     currentFolderId: null,
+    currentFolder: null, // Metadata of the current folder we're inside
     files: [],
     folderHistory: [],
     selectedFileForRename: null,
@@ -14,6 +15,7 @@ const App = {
     selectedItems: new Set(),
     uploadProgress: null,
     downloadProgress: null,
+    folderKeyCache: new Map(), // Cache for decrypted folder keys
 
     /**
      * Initialize the application
@@ -339,6 +341,7 @@ const App = {
         this.currentUser = null;
         this.masterKey = null;
         this.currentFolderId = null;
+        this.currentFolder = null;
         this.files = [];
         this.folderHistory = [];
         this.selectedItems.clear();
@@ -720,6 +723,73 @@ const App = {
             selectedCount.textContent = String(this.selectedItems.size);
         }
     },
+
+    /**
+     * ========================================
+     * HIERARCHICAL KEY MANAGEMENT
+     * ========================================
+     */
+
+    /**
+     * Get the parent key for creating new items
+     * If in root, return master key. Otherwise return current folder's key
+     */
+    async getParentKey() {
+        if (this.currentFolderId === null) {
+            // In root folder, use master key
+            return this.masterKey;
+        }
+
+        // Get current folder's decrypted key from cache or decrypt it
+        if (this.folderKeyCache.has(this.currentFolderId)) {
+            return this.folderKeyCache.get(this.currentFolderId);
+        }
+
+        // Need to decrypt the current folder's key
+        if (!this.currentFolder || !this.currentFolder.encrypted_key) {
+            throw new Error('Current folder key not found');
+        }
+
+        // Recursively get parent key to decrypt current folder's key
+        const parentKey = await this.getKeyForItem(this.currentFolder);
+        return parentKey;
+    },
+
+    /**
+     * Get decrypted key for any file/folder item
+     * Recursively decrypts up the hierarchy
+     */
+    async getKeyForItem(item) {
+        // Check cache first
+        if (item.type === 'folder' && this.folderKeyCache.has(item.id)) {
+            return this.folderKeyCache.get(item.id);
+        }
+
+        let parentKey;
+        if (item.parent_id === null || item.parent_id === undefined) {
+            // Root level item, use master key
+            parentKey = this.masterKey;
+        } else {
+            // Get parent folder's key
+            const parentFolder = this.files.find(f => f.id === item.parent_id);
+            if (!parentFolder) {
+                throw new Error('Parent folder not found');
+            }
+            parentKey = await this.getKeyForItem(parentFolder);
+        }
+
+        // Decrypt this item's key
+        const itemKeyRaw = await CryptoUtils.decryptItemKey(item.encrypted_key, parentKey);
+        const itemKey = await CryptoUtils.importRawKey(itemKeyRaw);
+
+        // Cache if it's a folder
+        if (item.type === 'folder') {
+            this.folderKeyCache.set(item.id, itemKey);
+        }
+
+        return itemKey;
+    },
+
     /**
          * Update breadcrumb navigation
          */
@@ -762,6 +832,12 @@ const App = {
      * Open folder
      */
     async openFolder(folderId, folderName) {
+        // Store the folder object before navigating into it
+        const folderObj = this.files.find(f => f.id === folderId && f.type === 'folder');
+        if (folderObj) {
+            this.currentFolder = folderObj;
+        }
+        
         this.folderHistory.push({ id: folderId, name: folderName });
         this.currentFolderId = folderId;
         await this.loadFiles(folderId);
@@ -773,6 +849,7 @@ const App = {
     async navigateToRoot() {
         this.folderHistory = [];
         this.currentFolderId = null;
+        this.currentFolder = null;
         await this.loadFiles();
     },
 
@@ -783,6 +860,30 @@ const App = {
         this.folderHistory = this.folderHistory.slice(0, index + 1);
         const folder = this.folderHistory[index];
         this.currentFolderId = folder.id;
+        
+        // We need to load the parent folder to get the folder object
+        // Then navigate into it
+        if (index === 0) {
+            // First folder in history, load from root
+            const response = await API.files.list(null);
+            if (response.success) {
+                const folderObj = response.data.files.find(f => f.id === folder.id && f.type === 'folder');
+                if (folderObj) {
+                    this.currentFolder = folderObj;
+                }
+            }
+        } else {
+            // Load from parent folder
+            const parentFolder = this.folderHistory[index - 1];
+            const response = await API.files.list(parentFolder.id);
+            if (response.success) {
+                const folderObj = response.data.files.find(f => f.id === folder.id && f.type === 'folder');
+                if (folderObj) {
+                    this.currentFolder = folderObj;
+                }
+            }
+        }
+        
         await this.loadFiles(folder.id);
     },
 
@@ -795,6 +896,15 @@ const App = {
         try {
             for (const file of files) {
                 showLoading(`Encrypting ${file.name}...`);
+
+                // Get parent key (master key if root, or current folder's key)
+                const parentKey = await this.getParentKey();
+
+                // Generate new key for this file
+                const fileKey = CryptoUtils.generateItemKey();
+
+                // Encrypt file key with parent key
+                const encryptedFileKey = await CryptoUtils.encryptItemKey(fileKey, parentKey);
 
                 // Encrypt file in chunks to save memory
                 const encryptedBlob = await CryptoUtils.encryptFileInChunks(
@@ -819,6 +929,7 @@ const App = {
                         encryptedBlob,
                         encryptedName,
                         file.size,
+                        encryptedFileKey,
                         this.currentFolderId,
                         CHUNK_SIZE,
                         file.name
@@ -833,6 +944,7 @@ const App = {
                         encryptedBlob,
                         encryptedName,
                         file.size,
+                        encryptedFileKey,
                         this.currentFolderId,
                         (loaded, total) => {
                             const percent = Math.round((loaded / total) * 100);
@@ -861,7 +973,7 @@ const App = {
     /**
      * Upload file in chunks
      */
-    async uploadFileInChunks(encryptedBlob, encryptedFilename, originalSize, parentId, chunkSize, displayName) {
+    async uploadFileInChunks(encryptedBlob, encryptedFilename, originalSize, encryptedFileKey, parentId, chunkSize, displayName) {
         const uploadId = this.generateUploadId();
         const totalSize = encryptedBlob.size;
         const totalChunks = Math.ceil(totalSize / chunkSize);
@@ -899,6 +1011,7 @@ const App = {
             encryptedFilename,
             originalSize,
             totalChunks,
+            encryptedFileKey,
             parentId
         );
 
@@ -1150,10 +1263,19 @@ const App = {
         try {
             showLoading('Creating folder...');
 
+            // Get parent key (master key if root, or current folder's key)
+            const parentKey = await this.getParentKey();
+
+            // Generate new key for this folder
+            const folderKey = CryptoUtils.generateItemKey();
+
+            // Encrypt folder key with parent key
+            const encryptedFolderKey = await CryptoUtils.encryptItemKey(folderKey, parentKey);
+
             // Encrypt folder name
             const encryptedName = await CryptoUtils.encryptFilename(folderName, this.masterKey);
 
-            const response = await API.files.createFolder(encryptedName, this.currentFolderId);
+            const response = await API.files.createFolder(encryptedName, encryptedFolderKey, this.currentFolderId);
             if (!response.success) {
                 throw new Error(response.message || 'Failed to create folder');
             }

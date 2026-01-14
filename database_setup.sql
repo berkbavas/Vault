@@ -37,6 +37,7 @@ CREATE TABLE IF NOT EXISTS files (
     size BIGINT DEFAULT 0,
     original_size BIGINT DEFAULT 0,
     mime_type VARCHAR(255) DEFAULT NULL,
+    encrypted_key VARCHAR(200) NOT NULL, -- Client-encrypted key (IV + ciphertext + tag in hex)
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,

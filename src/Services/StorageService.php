@@ -27,7 +27,7 @@ class StorageService
         if ($parentId === null) {
             // Root files
             $stmt = $this->pdo->prepare("
-                SELECT id, encrypted_name, type, size, original_size, mime_type, created_at, updated_at 
+                SELECT id, encrypted_name, type, size, original_size, mime_type, encrypted_key, created_at, updated_at 
                 FROM files 
                 WHERE user_id = ? AND parent_id IS NULL 
                 ORDER BY type DESC
@@ -36,7 +36,7 @@ class StorageService
         } else {
             // Files in specific folder
             $stmt = $this->pdo->prepare("
-                SELECT id, encrypted_name, type, size, original_size, mime_type, created_at, updated_at 
+                SELECT id, encrypted_name, type, size, original_size, mime_type, encrypted_key, created_at, updated_at 
                 FROM files 
                 WHERE user_id = ? AND parent_id = ? 
                 ORDER BY type DESC
@@ -47,15 +47,32 @@ class StorageService
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
-    public function createFolder($userId, $parentId, $folderName)
+    public function createFolder($userId, $parentId, $folderName, $encryptedKey)
     {
         $stmt = $this->pdo->prepare("
-            INSERT INTO files (user_id, parent_id, encrypted_name, type, size) 
-            VALUES (?, ?, ?, 'folder', 0)
+            INSERT INTO files (user_id, parent_id, encrypted_name, type, size, encrypted_key) 
+            VALUES (?, ?, ?, 'folder', 0, ?)
         ");
-        $stmt->execute([$userId, $parentId, $folderName]);
+        $stmt->execute([$userId, $parentId, $folderName, $encryptedKey]);
 
         return $this->pdo->lastInsertId();
+    }
+
+    public function getFolderKey($userId, $folderId)
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT encrypted_key 
+            FROM files 
+            WHERE id = ? AND user_id = ? AND type = 'folder'
+        ");
+        $stmt->execute([$folderId, $userId]);
+        $folder = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$folder) {
+            throw new Exception('Folder not found');
+        }
+
+        return $folder['encrypted_key'];
     }
 
     /**
@@ -73,14 +90,25 @@ class StorageService
         return $stmt->rowCount() > 0;
     }
 
-    public function move($userId, $id, $newParentId = null)
+    public function move($userId, $id, $newParentId = null, $newEncryptedKey = null)
     {
-        $stmt = $this->pdo->prepare("
-            UPDATE files 
-            SET parent_id = ?, updated_at = NOW() 
-            WHERE id = ? AND user_id = ?
-        ");
-        $stmt->execute([$newParentId, $id, $userId]);
+        if ($newEncryptedKey !== null) {
+            // Update parent_id and encrypted_key (key re-encrypted by client)
+            $stmt = $this->pdo->prepare("
+                UPDATE files 
+                SET parent_id = ?, encrypted_key = ?, updated_at = NOW() 
+                WHERE id = ? AND user_id = ?
+            ");
+            $stmt->execute([$newParentId, $newEncryptedKey, $id, $userId]);
+        } else {
+            // Only update parent_id
+            $stmt = $this->pdo->prepare("
+                UPDATE files 
+                SET parent_id = ?, updated_at = NOW() 
+                WHERE id = ? AND user_id = ?
+            ");
+            $stmt->execute([$newParentId, $id, $userId]);
+        }
 
         return $stmt->rowCount() > 0;
     }
@@ -88,7 +116,7 @@ class StorageService
     /**
      * Upload a file
      */
-    public function upload($userId, $file, $parentId, $encryptedName, $originalSize)
+    public function upload($userId, $file, $parentId, $encryptedName, $originalSize, $encryptedKey)
     {
         // Get user folder
         $stmt = $this->pdo->prepare("SELECT user_folder FROM users WHERE id = ?");
@@ -120,10 +148,10 @@ class StorageService
 
         // Insert into database
         $stmt = $this->pdo->prepare("
-            INSERT INTO files (user_id, parent_id, encrypted_name, type, path, size, original_size, mime_type) 
-            VALUES (?, ?, ?, 'file', ?, ?, ?, 'application/octet-stream')
+            INSERT INTO files (user_id, parent_id, encrypted_name, type, path, size, original_size, mime_type, encrypted_key) 
+            VALUES (?, ?, ?, 'file', ?, ?, ?, 'application/octet-stream', ?)
         ");
-        $stmt->execute([$userId, $parentId, $encryptedName, $filename, $fileSize, $originalSize]);
+        $stmt->execute([$userId, $parentId, $encryptedName, $filename, $fileSize, $originalSize, $encryptedKey]);
 
         $fileId = $this->pdo->lastInsertId();
 
@@ -134,6 +162,7 @@ class StorageService
         return [
             'id' => $fileId,
             'encrypted_name' => $encryptedName,
+            'encrypted_key' => $encryptedKey,
             'size' => $fileSize,
             'original_size' => $originalSize,
             'type' => 'file'
@@ -345,7 +374,7 @@ class StorageService
     /**
      * Finalize chunked upload by merging all chunks
      */
-    public function finalizeChunkedUpload($userId, $uploadId, $parentId, $encryptedName, $originalSize, $totalChunks)
+    public function finalizeChunkedUpload($userId, $uploadId, $parentId, $encryptedName, $originalSize, $totalChunks, $encryptedKey)
     {
         // Get user folder
         $stmt = $this->pdo->prepare("SELECT user_folder FROM users WHERE id = ?");
@@ -390,10 +419,10 @@ class StorageService
 
         // Insert into database
         $stmt = $this->pdo->prepare("
-            INSERT INTO files (user_id, parent_id, encrypted_name, type, path, size, original_size, mime_type) 
-            VALUES (?, ?, ?, 'file', ?, ?, ?, 'application/octet-stream')
+            INSERT INTO files (user_id, parent_id, encrypted_name, type, path, size, original_size, mime_type, encrypted_key) 
+            VALUES (?, ?, ?, 'file', ?, ?, ?, 'application/octet-stream', ?)
         ");
-        $stmt->execute([$userId, $parentId, $encryptedName, $filename, $fileSize, $originalSize]);
+        $stmt->execute([$userId, $parentId, $encryptedName, $filename, $fileSize, $originalSize, $encryptedKey]);
 
         $fileId = $this->pdo->lastInsertId();
 
@@ -407,6 +436,7 @@ class StorageService
         return [
             'id' => $fileId,
             'encrypted_name' => $encryptedName,
+            'encrypted_key' => $encryptedKey,
             'size' => $fileSize,
             'original_size' => $originalSize,
             'type' => 'file'

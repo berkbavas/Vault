@@ -130,11 +130,12 @@ const API = {
             });
         },
 
-        async upload(file, encryptedName, originalSize, parentId = null, onProgress = null) {
+        async upload(file, encryptedName, originalSize, encryptedKey, parentId = null, onProgress = null) {
             const formData = new FormData();
             formData.append('file', file);
             formData.append('encrypted_name', encryptedName);
             formData.append('original_size', originalSize);
+            formData.append('encrypted_key', encryptedKey);
             if (parentId) {
                 formData.append('parent_id', parentId);
             }
@@ -233,22 +234,29 @@ const API = {
             });
         },
 
-        async move(fileId, newParentId = null) {
+        async move(fileId, newParentId = null, newEncryptedKey = null) {
+            const body = { 
+                id: fileId,
+                new_parent_id: newParentId
+            };
+            
+            if (newEncryptedKey !== null) {
+                body.new_encrypted_key = newEncryptedKey;
+            }
+            
             return await API.request('/file/move.php', {
                 method: 'POST',
-                body: JSON.stringify({ 
-                    id: fileId,
-                    new_parent_id: newParentId
-                })
+                body: JSON.stringify(body)
             });
         },
 
-        async createFolder(encryptedName, parentId = null) {
+        async createFolder(encryptedName, encryptedKey, parentId = null) {
     
             return await API.request('/file/create_folder.php', {
                 method: 'POST',
                 body: JSON.stringify({ 
                     encrypted_name: encryptedName,
+                    encrypted_key: encryptedKey,
                     parent_id: parentId
                 })
             });
@@ -293,7 +301,7 @@ const API = {
         /**
          * Finalize chunked upload
          */
-        async finalizeUpload(uploadId, encryptedName, originalSize, totalChunks, parentId = null) {
+        async finalizeUpload(uploadId, encryptedName, originalSize, totalChunks, encryptedKey, parentId = null) {
             return await API.request('/file/finalize_upload.php', {
                 method: 'POST',
                 body: JSON.stringify({
@@ -301,6 +309,7 @@ const API = {
                     encrypted_name: encryptedName,
                     original_size: originalSize,
                     total_chunks: totalChunks,
+                    encrypted_key: encryptedKey,
                     parent_id: parentId
                 })
             });

@@ -32,9 +32,16 @@ class StorageController extends Controller
 
             $files = $this->storageService->list($userId, $parentId);
 
+            // Fetch encrypted_key for the folder if parent_id is provided
+            $folderKey = null;
+            if ($parentId !== null) {
+                $folderKey = $this->storageService->getFolderKey($userId, $parentId);
+            }
+
             return $this->success([
                 'files' => $files,
-                'parent_id' => $parentId
+                'parent_id' => $parentId,
+                'encrypted_key' => $folderKey
             ])->send();
         } catch (Exception $e) {
             return $this->error($e->getMessage(), 500)->send();
@@ -48,13 +55,15 @@ class StorageController extends Controller
 
             $this->validateJson([
                 'parent_id' => 'nullable|integer',
-                'encrypted_name' => 'required|string|max:255'
+                'encrypted_name' => 'required|string|max:255',
+                'encrypted_key' => 'required|string'
             ]);
 
             $parentId = $this->request->json('parent_id');
             $encryptedName = $this->request->json('encrypted_name');
+            $encryptedKey = $this->request->json('encrypted_key');
 
-            $folderId = $this->storageService->createFolder($userId, $parentId, $encryptedName);
+            $folderId = $this->storageService->createFolder($userId, $parentId, $encryptedName, $encryptedKey);
 
             return $this->success([
                 'folder_id' => $folderId
@@ -95,13 +104,15 @@ class StorageController extends Controller
             
             $this->validateJson([
                 'id' => 'required|integer',
-                'new_parent_id' => 'nullable|integer'
+                'new_parent_id' => 'nullable|integer',
+                'new_encrypted_key' => 'nullable|string'
             ]);
 
             $fileId = $this->request->json('id');
             $newParentId = $this->request->json('new_parent_id', null);
+            $newEncryptedKey = $this->request->json('new_encrypted_key', null);
 
-            $moved = $this->storageService->move($userId, $fileId, $newParentId);
+            $moved = $this->storageService->move($userId, $fileId, $newParentId, $newEncryptedKey);
 
             return $this->success([
                 'moved' => $moved
@@ -119,15 +130,17 @@ class StorageController extends Controller
             $this->validateFile();
             $this->validate([
                 'encrypted_name' => 'required|string|max:255',
-                'original_size' => 'required|integer'
+                'original_size' => 'required|integer',
+                'encrypted_key' => 'required|string'
             ]);
 
             $file = $_FILES['file'];
             $parentId = $this->request->post('parent_id', null);
             $encryptedName = $this->request->post('encrypted_name', '');
             $originalSize = $this->request->post('original_size', 0);
+            $encryptedKey = $this->request->post('encrypted_key');
 
-            $fileData = $this->storageService->upload($userId, $file, $parentId, $encryptedName, $originalSize);
+            $fileData = $this->storageService->upload($userId, $file, $parentId, $encryptedName, $originalSize, $encryptedKey);
 
             return $this->success([
                 'file' => $fileData
@@ -334,7 +347,8 @@ class StorageController extends Controller
                 'encrypted_name' => 'required|string|max:255',
                 'parent_id' => 'nullable',
                 'original_size' => 'required|integer',
-                'total_chunks' => 'required|integer'
+                'total_chunks' => 'required|integer',
+                'encrypted_key' => 'required|string'
             ]);
 
             $uploadId = $this->request->json('upload_id');
@@ -342,6 +356,7 @@ class StorageController extends Controller
             $parentId = $this->request->json('parent_id');
             $originalSize = $this->request->json('original_size', 0);
             $totalChunks = $this->request->json('total_chunks');
+            $encryptedKey = $this->request->json('encrypted_key');
 
             $fileData = $this->storageService->finalizeChunkedUpload(
                 $userId,
@@ -349,7 +364,8 @@ class StorageController extends Controller
                 $parentId,
                 $encryptedName,
                 $originalSize,
-                $totalChunks
+                $totalChunks,
+                $encryptedKey
             );
 
             return $this->success([
