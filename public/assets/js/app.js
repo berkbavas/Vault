@@ -227,9 +227,9 @@ const App = {
      */
     async loadQuota() {
         try {
-            const response = await API.files.getQuota();
+            const response = await API.auth.me();
             if (response.success) {
-                this.updateQuotaDisplay(response.data.used, response.data.total);
+                this.updateQuotaDisplay(response.data.storage_used, response.data.storage_quota);
             }
         } catch (error) {
             console.error('Failed to load quota:', error);
@@ -860,12 +860,11 @@ const App = {
         try {
             showLoading('Loading folders...');
             
-            const response = await API.files.listAll();
+            const response = await API.files.list(this.currentFolderId);
             if (!response.success) {
                 throw new Error('Failed to load folders');
             }
 
-            const selectedFile = this.files.find(f => f.id === this.selectedFileForMove);
             const tree = await FolderOperations.buildFolderTree(
                 response.data.files,
                 this.masterKey,
