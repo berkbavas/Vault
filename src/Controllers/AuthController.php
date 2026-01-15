@@ -151,6 +151,7 @@ class AuthController extends Controller
                     'encrypted_master_key' => $user['encrypted_master_key'],
                     'storage_used' => $user['storage_used'],
                     'storage_quota' => $user['storage_quota'],
+                    'is_admin' => $user['is_admin'] ?? 0,
                 ],
                 'token' => $token
             ], 'Login successful')->send();
@@ -211,6 +212,7 @@ class AuthController extends Controller
                 'encrypted_master_key' => $user['encrypted_master_key'],
                 'storage_used' => $user['storage_used'],
                 'storage_quota' => $user['storage_quota'],
+                'is_admin' => $user['is_admin'] ?? 0,
             ], 'User info retrieved successfully')->send();
         } catch (Exception $e) {
             return $this->error($e->getMessage(), 400)->send();
@@ -228,4 +230,68 @@ class AuthController extends Controller
 
         return $this->success(null, 'Logged out successfully')->send();
     }
+
+    /**
+     * List all users (admin only)
+     */
+    public function listUsers()
+    {
+        try {
+            $this->requireAdmin();
+
+            $users = $this->userService->getAllUsers();
+
+            return $this->success($users, 'Users retrieved successfully')->send();
+        } catch (Exception $e) {
+            return $this->error($e->getMessage(), 400)->send();
+        }
+    }
+
+
+    /**
+     * Update user storage quota (admin only)
+     */
+    public function updateQuota()
+    {
+        try {
+            $this->requireAdmin();
+
+            $this->validateJson([
+                'user_id' => 'required|integer',
+                'quota' => 'required|integer|min:0',
+            ]);
+
+            $userId = $this->request->json('user_id');
+            $quota = $this->request->json('quota');
+
+            $this->userService->updateQuota($userId, $quota);
+
+            return $this->success(null, 'User quota updated successfully')->send();
+        } catch (Exception $e) {
+            return $this->error($e->getMessage(), 400)->send();
+        }
+    }
+
+    /**
+     * Delete a user (admin only)
+     */
+    public function deleteUser()
+    {
+        try {
+            $this->requireAdmin();
+
+            $this->validateJson([
+                'user_id' => 'required|integer',
+            ]);
+
+            $userId = $this->request->json('user_id');
+
+            $this->userService->deleteUser($userId);
+
+            return $this->success(null, 'User deleted successfully')->send();
+        } catch (Exception $e) {
+            return $this->error($e->getMessage(), 400)->send();
+        }
+    }
+
 }

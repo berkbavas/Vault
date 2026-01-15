@@ -315,6 +315,14 @@ const API = {
             });
         }
     },
+
+    admin : {
+        async listUsers() {
+            return await API.request('/admin/list_users.php', {
+                method: 'GET'
+            });
+        }
+    }
 };
 
 // Initialize on load

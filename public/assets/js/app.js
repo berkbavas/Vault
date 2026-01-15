@@ -212,6 +212,11 @@ const App = {
         try {
             this.currentUser = await AuthModule.loadUserInfo();
             document.getElementById('username-display').textContent = this.currentUser.username;
+            
+            // Show admin panel button if user is admin
+            if (this.currentUser.is_admin == 1) {
+                document.getElementById('admin-panel-btn')?.classList.remove('hidden');
+            }
         } catch (error) {
             console.error('Failed to load user info:', error);
         }

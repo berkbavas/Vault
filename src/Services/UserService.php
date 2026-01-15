@@ -337,4 +337,92 @@ class UserService
 
         return true;
     }
+
+    /**
+     * Get all users (Admin only)
+     */
+    public function getAllUsers()
+    {
+        $stmt = $this->pdo->query("SELECT id, username, storage_used, storage_quota, is_admin, created_at, last_login_at FROM {$this->table} ORDER BY created_at DESC");
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Update user quota (Admin only)
+     */
+    public function updateQuota($userId, $newQuota)
+    {
+        if (!is_numeric($newQuota) || $newQuota < 0) {
+            throw new Exception('Invalid quota value');
+        }
+
+        $stmt = $this->pdo->prepare("UPDATE {$this->table} SET storage_quota = :quota, updated_at = :updated_at WHERE id = :id");
+        $stmt->execute([
+            'quota' => $newQuota,
+            'updated_at' => date('Y-m-d H:i:s'),
+            'id' => $userId
+        ]);
+
+        return $this->findById($userId);
+    }
+
+    /**
+     * Delete user (Admin only)
+     */
+    public function deleteUser($userId)
+    {
+        // Get user info before deletion
+        $user = $this->findById($userId);
+        
+        // Delete user's files from database (cascade will handle this)
+        // Delete user's physical files
+        $uploadDir = $this->config['storage']['upload_dir'] . '/' . $user['user_folder'];
+        if (file_exists($uploadDir)) {
+            $this->deleteDirectory($uploadDir);
+        }
+
+        // Delete user from database
+        $stmt = $this->pdo->prepare("DELETE FROM {$this->table} WHERE id = :id");
+        $stmt->execute(['id' => $userId]);
+
+        return ['success' => true, 'message' => 'User deleted successfully'];
+    }
+
+    /**
+     * Check if user is admin
+     */
+    public function isAdmin($userId)
+    {
+        $stmt = $this->pdo->prepare("SELECT is_admin FROM {$this->table} WHERE id = ? LIMIT 1");
+        $stmt->execute([$userId]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        
+        return $result && $result['is_admin'] == 1;
+    }
+
+    /**
+     * Recursively delete directory
+     */
+    private function deleteDirectory($dir)
+    {
+        if (!file_exists($dir)) {
+            return true;
+        }
+
+        if (!is_dir($dir)) {
+            return unlink($dir);
+        }
+
+        foreach (scandir($dir) as $item) {
+            if ($item == '.' || $item == '..') {
+                continue;
+            }
+
+            if (!$this->deleteDirectory($dir . DIRECTORY_SEPARATOR . $item)) {
+                return false;
+            }
+        }
+
+        return rmdir($dir);
+    }
 }

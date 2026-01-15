@@ -276,6 +276,12 @@
 
             <div class="sidebar-bottom">
                 <div class="sidebar-actions">
+                    <button id="admin-panel-btn" class="btn btn-tertiary btn-wide hidden" type="button"
+                        title="Admin Panel" onclick="window.location.href='admin.php'">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        Admin Panel
+                    </button>
+
                     <button id="change-password-btn" class="btn btn-tertiary btn-wide" type="button"
                         title="Change Password">
                         <i class="fa-solid fa-lock"></i>

@@ -122,6 +122,26 @@ abstract class Controller
         }
         return $userId;
     }
+    
+    /**
+     * Require admin privileges
+     */
+    protected function requireAdmin(): int
+    {
+        $userId = $this->requireAuth();
+
+        // Check if user is admin
+        $stmt = $this->pdo->prepare("SELECT is_admin FROM users WHERE id = :id");
+        $stmt->execute(['id' => $userId]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$user || !$user['is_admin']) {
+            JsonResponse::forbidden('Admin access required')->send();
+            exit;
+        }
+
+        return $userId;
+    }
 
     /**
      * Get authenticated user ID (alias for requireAuth)
