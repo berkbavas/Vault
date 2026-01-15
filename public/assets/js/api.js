@@ -321,6 +321,25 @@ const API = {
             return await API.request('/admin/list_users.php', {
                 method: 'GET'
             });
+        },
+
+        async updateQuota(userId, newQuota) {
+            return await API.request('/admin/update_quota.php', {
+                method: 'POST',
+                body: JSON.stringify({
+                    user_id: userId,
+                    quota: newQuota
+                })
+            });
+        },
+        
+        async deleteUser(userId) {
+            return await API.request('/admin/delete_user.php', {
+                method: 'POST',
+                body: JSON.stringify({
+                    user_id: userId
+                })
+            });
         }
     }
 };

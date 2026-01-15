@@ -150,9 +150,7 @@ async function deleteUser(userId, username) {
 
     try {
         showLoading('Deleting user...');
-        const response = await API.admin.deleteUser({
-            user_id: userId
-        });
+        const response = await API.admin.deleteUser(userId);
 
         if (response.success) {
             showToast('User deleted successfully', 'success');
