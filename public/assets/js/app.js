@@ -16,6 +16,30 @@ const App = {
     uploadProgress: null,
     downloadProgress: null,
     folderKeyCache: new Map(), // Cache for decrypted folder keys
+    uploadProgressState: {
+        isActive: false,
+        startTime: null,
+        lastUpdate: null,
+        loaded: 0,
+        total: 0,
+        speed: 0,
+        filename: null,
+        cancelled: false,
+        currentFile: 0,
+        totalFiles: 0
+    },
+    downloadProgressState: {
+        isActive: false,
+        startTime: null,
+        lastUpdate: null,
+        loaded: 0,
+        total: 0,
+        speed: 0,
+        filename: null,
+        cancelled: false,
+        currentFile: 0,
+        totalFiles: 0
+    },
 
     /**
      * Initialize the application
@@ -893,8 +917,20 @@ const App = {
     async handleFileUpload(files) {
         if (!files || files.length === 0) return;
 
+        const totalFiles = files.length;
+        let successCount = 0;
+        let failedCount = 0;
+
         try {
-            for (const file of files) {
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                
+                // Check if cancelled
+                if (App.uploadProgressState.cancelled) {
+                    showToast(`Upload cancelled. ${successCount} of ${totalFiles} files uploaded.`, 'info');
+                    break;
+                }
+
                 showLoading(`Encrypting ${file.name}...`);
 
                 // Get parent key (master key if root, or current folder's key)
@@ -916,56 +952,99 @@ const App = {
                     }
                 );
 
+                // Check if cancelled after encryption
+                if (App.uploadProgressState.cancelled) {
+                    hideLoading();
+                    showToast(`Upload cancelled. ${successCount} of ${totalFiles} files uploaded.`, 'info');
+                    break;
+                }
+
                 // Encrypt filename
                 const encryptedName = await CryptoUtils.encryptFilename(file.name, this.masterKey);
+
+                hideLoading();
 
                 const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
                 const USE_CHUNKED = encryptedBlob.size > CHUNK_SIZE;
 
-                if (USE_CHUNKED) {
-                    // Chunked upload for large files
-                    updateLoadingText(`Uploading ${file.name} (0%)...`);
-                    const response = await this.uploadFileInChunks(
-                        encryptedBlob,
-                        encryptedName,
-                        file.size,
-                        encryptedFileKey,
-                        this.currentFolderId,
-                        CHUNK_SIZE,
-                        file.name
-                    );
+                // Show progress bar with file count
+                showProgress('upload', file.name, encryptedBlob.size, i + 1, totalFiles);
 
-                    if (!response.success) {
-                        throw new Error(response.message || `Failed to upload ${file.name}`);
-                    }
-                } else {
-                    // Standard upload for small files
-                    const response = await API.files.upload(
-                        encryptedBlob,
-                        encryptedName,
-                        file.size,
-                        encryptedFileKey,
-                        this.currentFolderId,
-                        (loaded, total) => {
-                            const percent = Math.round((loaded / total) * 100);
-                            updateLoadingText(`Uploading ${file.name}: ${percent}%`);
+                try {
+                    if (USE_CHUNKED) {
+                        // Chunked upload for large files
+                        const response = await this.uploadFileInChunks(
+                            encryptedBlob,
+                            encryptedName,
+                            file.size,
+                            encryptedFileKey,
+                            this.currentFolderId,
+                            CHUNK_SIZE,
+                            file.name
+                        );
+
+                        if (!response.success) {
+                            throw new Error(response.message || `Failed to upload ${file.name}`);
                         }
-                    );
+                    } else {
+                        // Standard upload for small files
+                        const response = await API.files.upload(
+                            encryptedBlob,
+                            encryptedName,
+                            file.size,
+                            encryptedFileKey,
+                            this.currentFolderId,
+                            (loaded, total) => {
+                                if (!App.uploadProgressState.cancelled) {
+                                    updateProgress('upload', loaded, total);
+                                }
+                            }
+                        );
 
-                    if (!response.success) {
-                        throw new Error(response.message || `Failed to upload ${file.name}`);
+                        if (!response.success) {
+                            throw new Error(response.message || `Failed to upload ${file.name}`);
+                        }
                     }
-                }
 
-                showToast(`${file.name} uploaded successfully!`, 'success');
+                    // Check if cancelled after upload
+                    if (App.uploadProgressState.cancelled) {
+                        showToast(`Upload cancelled. ${successCount} of ${totalFiles} files uploaded.`, 'info');
+                        break;
+                    }
+
+                    successCount++;
+                    
+                    // Show completion briefly if not the last file
+                    if (i < files.length - 1) {
+                        document.getElementById('upload-progress-subtitle').textContent = `Complete! (${i + 1}/${totalFiles})`;
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    } else {
+                        completeProgress('upload');
+                    }
+                    
+                    showToast(`${file.name} uploaded successfully!`, 'success');
+                } catch (fileError) {
+                    failedCount++;
+                    console.error(`Failed to upload ${file.name}:`, fileError);
+                    showToast(`Failed to upload ${file.name}: ${fileError.message}`, 'error');
+                }
             }
 
             await this.loadFiles(this.currentFolderId);
             await this.loadQuota();
-            hideLoading();
+            
+            if (!App.uploadProgressState.cancelled && totalFiles > 1) {
+                if (failedCount === 0) {
+                    showToast(`All ${successCount} files uploaded successfully!`, 'success');
+                } else if (successCount > 0) {
+                    showToast(`${successCount} files uploaded, ${failedCount} failed`, 'info');
+                }
+            }
         } catch (error) {
             console.error('Upload error:', error);
             showToast(error.message || 'Upload failed', 'error');
+        } finally {
+            hideProgress('upload');
             hideLoading();
         }
     },
@@ -980,20 +1059,23 @@ const App = {
         let uploadedBytes = 0;
 
         for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
+            // Check if cancelled
+            if (App.uploadProgressState.cancelled) {
+                throw new Error('Upload cancelled by user');
+            }
+
             const start = chunkIndex * chunkSize;
             const end = Math.min(start + chunkSize, totalSize);
             const chunkBlob = encryptedBlob.slice(start, end);
-
-            const percent = Math.round((uploadedBytes / totalSize) * 100);
-            updateLoadingText(`Uploading ${displayName}: ${percent}% (chunk ${chunkIndex + 1}/${totalChunks})`);
 
             const response = await API.files.uploadChunk(
                 uploadId,
                 chunkIndex,
                 chunkBlob,
                 (loaded, total) => {
-                    const chunkProgress = Math.round(((uploadedBytes + loaded) / totalSize) * 100);
-                    updateLoadingText(`Uploading ${displayName}: ${chunkProgress}% (chunk ${chunkIndex + 1}/${totalChunks})`);
+                    if (!App.uploadProgressState.cancelled) {
+                        updateProgress('upload', uploadedBytes + loaded, totalSize);
+                    }
                 }
             );
 
@@ -1002,10 +1084,11 @@ const App = {
             }
 
             uploadedBytes += chunkBlob.size;
+            updateProgress('upload', uploadedBytes, totalSize);
         }
 
         // Finalize upload
-        updateLoadingText(`Finalizing ${displayName}...`);
+        document.getElementById('upload-progress-subtitle').textContent = 'Finalizing...';
         const finalizeResponse = await API.files.finalizeUpload(
             uploadId,
             encryptedFilename,
@@ -1035,6 +1118,11 @@ const App = {
             // Get file size first
             const fileSize = await API.files.getFileSize(fileId);
 
+            hideLoading();
+            
+            // Show progress bar
+            showProgress('download', filename, fileSize);
+
             // Use parallel range-based download for files larger than 5MB
             const USE_RANGE_DOWNLOAD = fileSize > 5 * 1024 * 1024;
 
@@ -1058,22 +1146,32 @@ const App = {
                 const chunks = [];
 
                 while (true) {
+                    // Check if cancelled
+                    if (App.downloadProgressState.cancelled) {
+                        reader.cancel();
+                        throw new Error('Download cancelled by user');
+                    }
+
                     const { done, value } = await reader.read();
                     if (done) break;
 
                     chunks.push(value);
                     loaded += value.length;
 
-                    if (total) {
-                        const percent = Math.round((loaded / total) * 100);
-                        updateLoadingText(`Downloading ${filename}: ${percent}%`);
+                    if (total && !App.downloadProgressState.cancelled) {
+                        updateProgress('download', loaded, total);
                     }
                 }
 
                 encryptedBlob = new Blob(chunks);
             }
 
-            updateLoadingText(`Decrypting ${filename}...`);
+            // Check if cancelled before decryption
+            if (App.downloadProgressState.cancelled) {
+                throw new Error('Download cancelled by user');
+            }
+
+            document.getElementById('download-progress-subtitle').textContent = 'Decrypting...';
 
             // Try to detect format: new chunked format has size markers after main IV
             // Old format: [IV(12)] + [encrypted_data]
@@ -1086,8 +1184,7 @@ const App = {
                     encryptedBlob,
                     this.masterKey,
                     (processed, total) => {
-                        const percent = Math.round((processed / total) * 100);
-                        updateLoadingText(`Decrypting ${filename}: ${percent}%`);
+                        // Show decryption progress
                     }
                 );
             } catch (error) {
@@ -1108,11 +1205,12 @@ const App = {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
 
+            completeProgress('download');
             showToast(`${filename} downloaded successfully!`, 'success');
-            hideLoading();
         } catch (error) {
             console.error('Download error:', error);
             showToast(error.message || 'Download failed', 'error');
+            hideProgress('download');
             hideLoading();
         }
     },
@@ -1131,6 +1229,11 @@ const App = {
 
         // Download chunk with retry logic
         const downloadChunk = async (chunkIndex, retries = 0) => {
+            // Check if cancelled
+            if (App.downloadProgressState.cancelled) {
+                throw new Error('Download cancelled by user');
+            }
+
             const start = chunkIndex * CHUNK_SIZE;
             const end = Math.min(start + CHUNK_SIZE - 1, fileSize - 1);
 
@@ -1145,12 +1248,13 @@ const App = {
                 chunks[chunkIndex] = new Uint8Array(chunkData);
 
                 downloadedBytes += chunkData.byteLength;
-                const percent = Math.round((downloadedBytes / fileSize) * 100);
-                updateLoadingText(`Downloading ${filename}: ${percent}%`);
+                if (!App.downloadProgressState.cancelled) {
+                    updateProgress('download', downloadedBytes, fileSize);
+                }
 
                 return true;
             } catch (error) {
-                if (retries < MAX_RETRIES) {
+                if (retries < MAX_RETRIES && !App.downloadProgressState.cancelled) {
                     console.log(`Retrying chunk ${chunkIndex}, attempt ${retries + 1}/${MAX_RETRIES}`);
                     await new Promise(resolve => setTimeout(resolve, 1000 * (retries + 1)));
                     return downloadChunk(chunkIndex, retries + 1);
@@ -1566,6 +1670,171 @@ function closeNewFolderModal() {
 function closeMoveModal() {
     document.getElementById('move-modal').classList.add('hidden');
 }
+
+// ===== Progress Bar Functions =====
+
+/**
+ * Show progress bar
+ * @param {string} type - 'upload' or 'download'
+ * @param {string} filename - Name of the file
+ * @param {number} total - Total size in bytes
+ * @param {number} currentFile - Current file number (optional)
+ * @param {number} totalFiles - Total number of files (optional)
+ */
+function showProgress(type, filename, total, currentFile = 1, totalFiles = 1) {
+    const modal = document.getElementById(`${type}-progress-modal`);
+    const title = document.getElementById(`${type}-progress-title`);
+    const progressState = type === 'upload' ? App.uploadProgressState : App.downloadProgressState;
+    
+    progressState.isActive = true;
+    progressState.startTime = Date.now();
+    progressState.lastUpdate = Date.now();
+    progressState.loaded = 0;
+    progressState.total = total;
+    progressState.speed = 0;
+    progressState.filename = filename;
+    progressState.cancelled = false;
+    progressState.currentFile = currentFile;
+    progressState.totalFiles = totalFiles;
+    
+    // Set title based on type and file count
+    if (totalFiles > 1) {
+        title.textContent = type === 'upload' 
+            ? `Uploading (${currentFile}/${totalFiles})` 
+            : `Downloading (${currentFile}/${totalFiles})`;
+    } else {
+        title.textContent = type === 'upload' ? 'Uploading' : 'Downloading';
+    }
+    
+    document.getElementById(`${type}-progress-subtitle`).textContent = filename;
+    document.getElementById(`${type}-progress-percentage`).textContent = '0%';
+    document.getElementById(`${type}-progress-bar-fill`).style.width = '0%';
+    document.getElementById(`${type}-progress-speed`).textContent = '-- KB/s';
+    document.getElementById(`${type}-progress-size`).textContent = `0 / ${formatFileSize(total)}`;
+    document.getElementById(`${type}-progress-time`).textContent = 'Calculating...';
+    
+    modal.classList.remove('hidden', 'complete');
+}
+
+/**
+ * Update progress bar
+ * @param {string} type - 'upload' or 'download'
+ * @param {number} loaded - Bytes loaded
+ * @param {number} total - Total bytes
+ */
+function updateProgress(type, loaded, total) {
+    const progressState = type === 'upload' ? App.uploadProgressState : App.downloadProgressState;
+    if (!progressState.isActive) return;
+    
+    const now = Date.now();
+    const timeDiff = (now - progressState.lastUpdate) / 1000; // seconds
+    
+    if (timeDiff > 0.1) { // Update at most every 100ms
+        const bytesDiff = loaded - progressState.loaded;
+        const speed = bytesDiff / timeDiff; // bytes per second
+        
+        // Smooth speed calculation (exponential moving average)
+        progressState.speed = progressState.speed * 0.7 + speed * 0.3;
+        progressState.loaded = loaded;
+        progressState.lastUpdate = now;
+        
+        // Update UI
+        const percentage = Math.min(Math.round((loaded / total) * 100), 100);
+        document.getElementById(`${type}-progress-percentage`).textContent = percentage + '%';
+        document.getElementById(`${type}-progress-bar-fill`).style.width = percentage + '%';
+        
+        // Update speed
+        const speedKB = progressState.speed / 1024;
+        const speedMB = speedKB / 1024;
+        let speedText;
+        if (speedMB > 1) {
+            speedText = speedMB.toFixed(2) + ' MB/s';
+        } else {
+            speedText = speedKB.toFixed(2) + ' KB/s';
+        }
+        document.getElementById(`${type}-progress-speed`).textContent = speedText;
+        
+        // Update size
+        document.getElementById(`${type}-progress-size`).textContent = 
+            `${formatFileSize(loaded)} / ${formatFileSize(total)}`;
+        
+        // Calculate time remaining
+        if (progressState.speed > 0) {
+            const remaining = (total - loaded) / progressState.speed;
+            document.getElementById(`${type}-progress-time`).textContent = formatTime(remaining);
+        }
+    }
+}
+
+/**
+ * Complete progress (show success state briefly then hide)
+ * @param {string} type - 'upload' or 'download'
+ */
+function completeProgress(type) {
+    const progressState = type === 'upload' ? App.uploadProgressState : App.downloadProgressState;
+    if (!progressState.isActive) return;
+    
+    const modal = document.getElementById(`${type}-progress-modal`);
+    const card = modal.querySelector('.progress-card');
+    
+    document.getElementById(`${type}-progress-percentage`).textContent = '100%';
+    document.getElementById(`${type}-progress-bar-fill`).style.width = '100%';
+    document.getElementById(`${type}-progress-subtitle`).textContent = 'Complete!';
+    document.getElementById(`${type}-progress-time`).textContent = 'Done';
+    
+    card.classList.add('complete');
+    
+    // Hide after 2 seconds
+    setTimeout(() => {
+        hideProgress(type);
+    }, 2000);
+}
+
+/**
+ * Hide progress bar
+ * @param {string} type - 'upload' or 'download'
+ */
+function hideProgress(type) {
+    const modal = document.getElementById(`${type}-progress-modal`);
+    const card = modal.querySelector('.progress-card');
+    const progressState = type === 'upload' ? App.uploadProgressState : App.downloadProgressState;
+    
+    modal.classList.add('hidden');
+    card.classList.remove('complete');
+    progressState.isActive = false;
+    progressState.cancelled = false;
+    progressState.currentFile = 0;
+    progressState.totalFiles = 0;
+}
+
+/**
+ * Format time in seconds to human readable
+ */
+function formatTime(seconds) {
+    if (seconds < 60) {
+        return Math.round(seconds) + ' sec';
+    } else if (seconds < 3600) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.round(seconds % 60);
+        return `${mins}m ${secs}s`;
+    } else {
+        const hours = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        return `${hours}h ${mins}m`;
+    }
+}
+
+// Add cancelProgress to App object
+App.cancelProgress = function(type) {
+    const progressState = type === 'upload' ? App.uploadProgressState : App.downloadProgressState;
+    const operationType = type === 'upload' ? 'upload' : 'download';
+    
+    if (confirm(`Are you sure you want to cancel this ${operationType}?`)) {
+        progressState.cancelled = true;
+        hideProgress(type);
+        showToast(`${operationType.charAt(0).toUpperCase() + operationType.slice(1)} cancelled`, 'info');
+    }
+};
 
 function confirmMove() {
     App.confirmMove();

@@ -26,6 +26,91 @@
         </div>
     </div>
 
+    <!-- Progress Bars Container -->
+    <div id="progress-container" class="progress-container">
+        <!-- Upload Progress Bar -->
+        <div id="upload-progress-modal" class="progress-modal hidden" data-type="upload">
+            <div class="progress-card">
+                <div class="progress-header">
+                    <div class="progress-icon">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+                    <div class="progress-info">
+                        <div class="progress-title" id="upload-progress-title">Uploading file...</div>
+                        <div class="progress-subtitle" id="upload-progress-subtitle">Preparing...</div>
+                    </div>
+                    <button class="progress-close" onclick="App.cancelProgress('upload')" title="Cancel">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="progress-body">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-track">
+                            <div class="progress-bar-fill" id="upload-progress-bar-fill"></div>
+                            <div class="progress-bar-glow"></div>
+                        </div>
+                        <div class="progress-percentage" id="upload-progress-percentage">0%</div>
+                    </div>
+                    <div class="progress-stats">
+                        <div class="progress-stat">
+                            <span class="stat-label">Speed:</span>
+                            <span class="stat-value" id="upload-progress-speed">-- KB/s</span>
+                        </div>
+                        <div class="progress-stat">
+                            <span class="stat-label">Size:</span>
+                            <span class="stat-value" id="upload-progress-size">-- / --</span>
+                        </div>
+                        <div class="progress-stat">
+                            <span class="stat-label">Time left:</span>
+                            <span class="stat-value" id="upload-progress-time">Calculating...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Download Progress Bar -->
+        <div id="download-progress-modal" class="progress-modal hidden" data-type="download">
+            <div class="progress-card">
+                <div class="progress-header">
+                    <div class="progress-icon">
+                        <i class="fa-solid fa-cloud-arrow-down"></i>
+                    </div>
+                    <div class="progress-info">
+                        <div class="progress-title" id="download-progress-title">Downloading file...</div>
+                        <div class="progress-subtitle" id="download-progress-subtitle">Preparing...</div>
+                    </div>
+                    <button class="progress-close" onclick="App.cancelProgress('download')" title="Cancel">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="progress-body">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-track">
+                            <div class="progress-bar-fill" id="download-progress-bar-fill"></div>
+                            <div class="progress-bar-glow"></div>
+                        </div>
+                        <div class="progress-percentage" id="download-progress-percentage">0%</div>
+                    </div>
+                    <div class="progress-stats">
+                        <div class="progress-stat">
+                            <span class="stat-label">Speed:</span>
+                            <span class="stat-value" id="download-progress-speed">-- KB/s</span>
+                        </div>
+                        <div class="progress-stat">
+                            <span class="stat-label">Size:</span>
+                            <span class="stat-value" id="download-progress-size">-- / --</span>
+                        </div>
+                        <div class="progress-stat">
+                            <span class="stat-label">Time left:</span>
+                            <span class="stat-value" id="download-progress-time">Calculating...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Auth -->
     <div id="auth-container" class="auth-shell">
         <div class="auth-card">
