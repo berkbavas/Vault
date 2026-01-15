@@ -1,21 +1,26 @@
 /**
  * Vault Drive - Main Application
  * Single Page Application for secure file management
+ * 
+ * This is the main coordinator that uses modular components:
+ * - AuthModule: Authentication and user management
+ * - FileOperations: File upload/download/delete
+ * - FolderOperations: Folder creation and hierarchy
+ * - Progress Bar: Upload/download progress tracking
+ * - UI Helpers: Utility functions
  */
 
 const App = {
     currentUser: null,
     masterKey: null,
     currentFolderId: null,
-    currentFolder: null, // Metadata of the current folder we're inside
+    currentFolder: null,
     files: [],
     folderHistory: [],
     selectedFileForRename: null,
     selectedFileForMove: null,
     selectedItems: new Set(),
-    uploadProgress: null,
-    downloadProgress: null,
-    folderKeyCache: new Map(), // Cache for decrypted folder keys
+    folderKeyCache: new Map(),
     uploadProgressState: {
         isActive: false,
         startTime: null,
@@ -50,18 +55,13 @@ const App = {
         const masterKeyHex = sessionStorage.getItem('masterKey');
 
         if (token && masterKeyHex) {
-            try {
-                showLoading('Loading your files...');
-                this.masterKey = await CryptoUtils.importMasterKey(masterKeyHex);
-                await this.loadUserInfo();
-                await this.loadQuota();
-                this.showApp();
-                await this.loadFiles();
-                hideLoading();
-            } catch (error) {
-                console.error('Session restore failed:', error);
-                this.logout();
-            }
+            API.setToken(token);
+            this.masterKey = await CryptoUtils.importMasterKey(masterKeyHex);
+            
+            await this.loadUserInfo();
+            await this.loadFiles();
+            await this.loadQuota();
+            this.showApp();
         }
 
         this.setupEventListeners();
@@ -116,7 +116,7 @@ const App = {
 
         document.getElementById('file-input')?.addEventListener('change', async (e) => {
             await this.handleFileUpload(e.target.files);
-            e.target.value = ''; // Reset input
+            e.target.value = '';
         });
 
         // New folder
@@ -164,55 +164,18 @@ const App = {
         const username = document.getElementById('login-username').value.trim();
         const password = document.getElementById('login-password').value;
 
-        if (!username || !password) {
-            showToast('Please enter username and password', 'error');
-            return;
-        }
-
         try {
             showLoading('Logging in...');
-
-            // Get client salt
-            const saltResponse = await API.auth.getClientSalt(username);
-            if (!saltResponse.success) {
-                throw new Error(saltResponse.message || 'Failed to get client salt');
-            }
-
-            const clientSalt = CryptoUtils.hexToArrayBuffer(saltResponse.data.client_salt);
-
-            // Hash password for authentication
-            const passwordHash = await CryptoUtils.hashPassword(password, clientSalt);
-
-            // Login
-            const loginResponse = await API.auth.login(username, passwordHash);
-            if (!loginResponse.success) {
-                throw new Error(loginResponse.message || 'Login failed');
-            }
-
-            // Store token
-            API.setToken(loginResponse.data.token);
-
-            const kdfSalt = CryptoUtils.hexToArrayBuffer(loginResponse.data.user.kdf_salt);
-            const encryptedMasterKey = loginResponse.data.user.encrypted_master_key;
-
-            // Derive key and decrypt master key
-            const passwordKey = await CryptoUtils.deriveKey(password, kdfSalt);
-            const masterKeyHex = await CryptoUtils.decryptMasterKey(encryptedMasterKey, passwordKey);
-            this.masterKey = await CryptoUtils.importMasterKey(masterKeyHex);
-
-            // Store master key in session
-            CryptoUtils.storeMasterKeyInSession(masterKeyHex);
-
-            // Load user info
-            await this.loadUserInfo();
-            await this.loadQuota();
-
-            // Show app
-            this.showApp();
+            const { masterKey, user } = await AuthModule.handleLogin(username, password);
+            
+            this.masterKey = masterKey;
+            this.currentUser = user;
+            
             await this.loadFiles();
-
-            showToast('Login successful!', 'success');
+            await this.loadQuota();
+            this.showApp();
             hideLoading();
+            showToast('Login successful!', 'success');
         } catch (error) {
             console.error('Login error:', error);
             showToast(error.message || 'Login failed', 'error');
@@ -228,56 +191,13 @@ const App = {
         const password = document.getElementById('register-password').value;
         const confirmPassword = document.getElementById('register-confirm-password').value;
 
-        if (!username || !password || !confirmPassword) {
-            showToast('Please fill in all fields', 'error');
-            return;
-        }
-
-        if (password !== confirmPassword) {
-            showToast('Passwords do not match', 'error');
-            return;
-        }
-
-        if (password.length < 4) {
-            showToast('Password must be at least 4 characters', 'error');
-            return;
-        }
-
         try {
-            showLoading('Creating your account...');
-
-            // Generate salts
-            const clientSalt = CryptoUtils.generateSalt();
-            const kdfSalt = CryptoUtils.generateSalt();
-
-            // Hash password
-            const passwordHash = await CryptoUtils.hashPassword(password, clientSalt);
-
-            // Generate and encrypt master key
-            const masterKey = await CryptoUtils.generateMasterKey();
-            const passwordKey = await CryptoUtils.deriveKey(password, kdfSalt);
-            const encryptedMasterKey = await CryptoUtils.encryptMasterKey(masterKey, passwordKey);
-
-            // Register
-            const response = await API.auth.register(
-                username,
-                CryptoUtils.arrayBufferToHex(clientSalt),
-                CryptoUtils.arrayBufferToHex(kdfSalt),
-                passwordHash,
-                encryptedMasterKey
-            );
-
-            if (!response.success) {
-                throw new Error(response.message || 'Registration failed');
-            }
-
-            showToast('Registration successful! Please login.', 'success');
+            showLoading('Creating account...');
+            await AuthModule.handleRegister(username, password, confirmPassword);
+            
             this.showLoginForm();
-
-            // Pre-fill username
-            document.getElementById('login-username').value = username;
-
             hideLoading();
+            showToast('Registration successful! Please log in.', 'success');
         } catch (error) {
             console.error('Registration error:', error);
             showToast(error.message || 'Registration failed', 'error');
@@ -289,11 +209,11 @@ const App = {
      * Load user info
      */
     async loadUserInfo() {
-        const response = await API.auth.me();
-        if (response.success) {
-            this.currentUser = response.data;
+        try {
+            this.currentUser = await AuthModule.loadUserInfo();
             document.getElementById('username-display').textContent = this.currentUser.username;
-            this.updateQuotaDisplay(response.data.storage_used, response.data.storage_quota);
+        } catch (error) {
+            console.error('Failed to load user info:', error);
         }
     },
 
@@ -302,12 +222,12 @@ const App = {
      */
     async loadQuota() {
         try {
-            const response = await API.auth.me();
+            const response = await API.files.getQuota();
             if (response.success) {
-                this.updateQuotaDisplay(response.data.storage_used, response.data.storage_quota);
+                this.updateQuotaDisplay(response.data.used, response.data.total);
             }
         } catch (error) {
-            console.error('Load quota error:', error);
+            console.error('Failed to load quota:', error);
         }
     },
 
@@ -369,6 +289,7 @@ const App = {
         this.files = [];
         this.folderHistory = [];
         this.selectedItems.clear();
+        this.folderKeyCache.clear();
         this.showAuth();
         showToast('Logged out successfully', 'info');
     },
@@ -392,20 +313,21 @@ const App = {
         document.getElementById('select-all').checked = isChecked;
         const checkboxes = document.querySelectorAll('.file-checkbox');
         checkboxes.forEach(checkbox => {
-            checkbox.checked = isChecked;
             const fileId = parseInt(checkbox.dataset.fileId);
             if (isChecked) {
                 this.selectedItems.add(fileId);
+                checkbox.checked = true;
             } else {
                 this.selectedItems.delete(fileId);
+                checkbox.checked = false;
             }
         });
         this.updateBulkActions();
     },
 
     /**
- * Update bulk actions visibility
- */
+     * Update bulk actions visibility
+     */
     updateBulkActions() {
         const bulkActions = document.getElementById('bulk-actions');
         const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
@@ -413,12 +335,10 @@ const App = {
 
         const hasSelection = this.selectedItems.size > 0;
 
-        // Container
         if (bulkActions) {
-            bulkActions.style.display = hasSelection ? 'flex' : 'none';
+            bulkActions.style.opacity = hasSelection ? 1 : 0;
         }
 
-        // Button (defensive: in case container styling changes later)
         if (bulkDeleteBtn) {
             bulkDeleteBtn.style.display = hasSelection ? 'inline-flex' : 'none';
         }
@@ -427,9 +347,10 @@ const App = {
             selectedCount.textContent = String(this.selectedItems.size);
         }
     },
+
     /**
-         * Delete selected files
-         */
+     * Delete selected files
+     */
     async deleteSelectedFiles() {
         if (this.selectedItems.size === 0) {
             showToast('No files selected', 'error');
@@ -441,81 +362,22 @@ const App = {
         }
 
         try {
-            showLoading(`Deleting ${this.selectedItems.size} item(s)...`);
-
-            const response = await API.files.deleteMultiple(Array.from(this.selectedItems));
-            if (!response.success) {
-                throw new Error(response.message || 'Bulk delete failed');
-            }
+            showLoading('Deleting files...');
+            const fileIds = Array.from(this.selectedItems);
+            await FileOperations.deleteMultipleFiles(fileIds);
 
             this.selectedItems.clear();
             this.updateBulkActions();
-            showToast('Selected items deleted successfully', 'success');
-
-
+            
+            showToast(`${fileIds.length} item(s) deleted successfully!`, 'success');
             await this.loadFiles(this.currentFolderId);
             await this.loadQuota();
             hideLoading();
         } catch (error) {
-            console.error('Bulk delete error:', error);
+            console.error('Delete error:', error);
             showToast(error.message || 'Delete failed', 'error');
             hideLoading();
         }
-    },
-
-    /**
-     * Get file icon based on file extension
-     * Returns object with icon class and color class
-     */
-    getFileIcon(filename) {
-        const ext = filename.toLowerCase().split('.').pop();
-
-        // Image files
-        if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp'].includes(ext)) {
-            return { icon: 'fa-file-image', color: 'image' };
-        }
-
-        // Video files
-        if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'mkv', 'webm'].includes(ext)) {
-            return { icon: 'fa-file-video', color: 'video' };
-        }
-
-        // Audio files
-        if (['mp3', 'wav', 'ogg', 'flac', 'm4a'].includes(ext)) {
-            return { icon: 'fa-file-audio', color: 'audio' };
-        }
-
-        // Document files
-        if (['doc', 'docx'].includes(ext)) {
-            return { icon: 'fa-file-word', color: 'document' };
-        }
-        if (['xls', 'xlsx'].includes(ext)) {
-            return { icon: 'fa-file-excel', color: 'document' };
-        }
-        if (['ppt', 'pptx'].includes(ext)) {
-            return { icon: 'fa-file-powerpoint', color: 'document' };
-        }
-        if (ext === 'pdf') {
-            return { icon: 'fa-file-pdf', color: 'pdf' };
-        }
-
-        // Archive files
-        if (['zip', 'rar', '7z', 'tar', 'gz'].includes(ext)) {
-            return { icon: 'fa-file-archive', color: 'archive' };
-        }
-
-        // Code files
-        if (['html', 'css', 'js', 'php', 'py', 'java', 'c', 'cpp', 'json', 'xml'].includes(ext)) {
-            return { icon: 'fa-file-code', color: 'code' };
-        }
-
-        // Text files
-        if (['txt', 'md', 'rtf'].includes(ext)) {
-            return { icon: 'fa-file-alt', color: 'text' };
-        }
-
-        // Default
-        return { icon: 'fa-file', color: 'default' };
     },
 
     /**
@@ -523,23 +385,18 @@ const App = {
      */
     async loadFiles(folderId = null) {
         try {
-            // Clear selections
-            this.toggleAllSelections(false);
-            this.updateBulkActions();
-
-
             const response = await API.files.list(folderId);
-            if (!response.success) {
-                throw new Error(response.message || 'Failed to load files');
+            
+            if (response.success) {
+                this.files = response.data.files;
+                this.selectedItems.clear();
+                await this.renderFileList();
+                this.updateBreadcrumb();
+                this.updateBulkActions();
             }
-
-            this.files = response.data.files;
-            await this.renderFileList();
-            this.updateBreadcrumb();
-
         } catch (error) {
-            console.error('Load files error:', error);
-            showToast(error.message || 'Failed to load files', 'error');
+            console.error('Failed to load files:', error);
+            showToast('Failed to load files', 'error');
         }
     },
 
@@ -556,8 +413,6 @@ const App = {
             document.querySelector('.file-list').style.display = 'none';
             document.querySelector('.file-cards').style.display = 'none';
             document.getElementById('empty-state').classList.remove('hidden');
-            text = this.currentFolderId === null ? "There are no files" : "This folder is empty";
-            document.getElementById('empty-title').innerText = text;
             return;
         }
 
@@ -566,20 +421,17 @@ const App = {
         document.getElementById('empty-state').classList.add('hidden');
 
         for (const file of this.files) {
-            // Decrypt filename
-            let displayName = 'Decrypting...';
             try {
-                displayName = await CryptoUtils.decryptFilename(file.encrypted_name, this.masterKey);
+                const displayName = await CryptoUtils.decryptFilename(file.encrypted_name, this.masterKey);
+                
+                // Render desktop row
+                this.renderDesktopRow(file, displayName, tbody);
+                
+                // Render mobile card
+                this.renderMobileCard(file, displayName, cardsContainer);
             } catch (error) {
-                console.error('Failed to decrypt filename:', error);
-                displayName = '[Decryption failed]';
+                console.error('Error decrypting file name:', error);
             }
-
-            // Render desktop row
-            this.renderDesktopRow(file, displayName, tbody);
-
-            // Render mobile card
-            this.renderMobileCard(file, displayName, cardsContainer);
         }
     },
 
@@ -594,9 +446,9 @@ const App = {
         const checkboxTd = document.createElement('td');
         checkboxTd.style.width = '40px';
         checkboxTd.innerHTML = `
-                <input type="checkbox" class="file-checkbox" data-file-id="${file.id}" 
-                       onchange="App.toggleFileSelection(${file.id}, this.checked)">
-            `;
+            <input type="checkbox" class="file-checkbox" data-file-id="${file.id}" 
+                   onchange="App.toggleFileSelection(${file.id}, this.checked)">
+        `;
         tr.appendChild(checkboxTd);
 
         // Name column
@@ -604,8 +456,8 @@ const App = {
         const nameDiv = document.createElement('div');
         nameDiv.className = 'file-name';
         if (file.type === 'folder') {
-            nameDiv.onclick = () => this.openFolder(file.id, displayName);
             nameDiv.style.cursor = 'pointer';
+            nameDiv.onclick = () => this.openFolder(file.id, displayName);
         }
 
         let iconClass, colorClass;
@@ -613,14 +465,14 @@ const App = {
             iconClass = 'fa-folder-open';
             colorClass = 'folder';
         } else {
-            const iconData = this.getFileIcon(displayName);
+            const iconData = getFileIcon(displayName);
             iconClass = iconData.icon;
             colorClass = iconData.color;
         }
         nameDiv.innerHTML = `
-                <i class="fas ${iconClass} file-icon ${colorClass}"></i>
-                <span>${escapeHtml(displayName)}</span>
-            `;
+            <i class="fas ${iconClass} file-icon ${colorClass}"></i>
+            <span>${escapeHtml(displayName)}</span>
+        `;
         nameTd.appendChild(nameDiv);
         tr.appendChild(nameTd);
 
@@ -643,23 +495,23 @@ const App = {
 
         if (file.type === 'file') {
             actionsDiv.innerHTML += `
-                    <button class="action-btn" onclick="App.downloadFile(${file.id}, '${escapeHtml(displayName)}')" title="Download">
-                        <i class="fas fa-download"></i>
-                    </button>
-                `;
+                <button class="action-btn" onclick="App.downloadFile(${file.id}, '${escapeHtml(displayName)}')" title="Download">
+                    <i class="fas fa-download"></i>
+                </button>
+            `;
         }
 
         actionsDiv.innerHTML += `
-                <button class="action-btn" onclick="App.showRenameModal(${file.id}, '${escapeHtml(displayName)}')" title="Rename">
-                    <i class="fas fa-edit"></i>
-                </button>
-                <button class="action-btn" onclick="App.showMoveModal(${file.id})" title="Move">
-                    <i class="fas fa-arrows-alt"></i>
-                </button>
-                <button class="action-btn danger" onclick="App.deleteFile(${file.id}, '${escapeHtml(displayName)}')" title="Delete">
-                    <i class="fa-regular fa-trash-can"></i>
-                </button>
-            `;
+            <button class="action-btn" onclick="App.showRenameModal(${file.id}, '${escapeHtml(displayName)}')" title="Rename">
+                <i class="fas fa-edit"></i>
+            </button>
+            <button class="action-btn" onclick="App.showMoveModal(${file.id})" title="Move">
+                <i class="fas fa-arrows-alt"></i>
+            </button>
+            <button class="action-btn danger" onclick="App.deleteFile(${file.id}, '${escapeHtml(displayName)}')" title="Delete">
+                <i class="fa-regular fa-trash-can"></i>
+            </button>
+        `;
 
         actionsTd.appendChild(actionsDiv);
         tr.appendChild(actionsTd);
@@ -680,7 +532,7 @@ const App = {
             iconClass = 'fa-folder-open';
             colorClass = 'folder';
         } else {
-            const iconData = this.getFileIcon(displayName);
+            const iconData = getFileIcon(displayName);
             iconClass = iconData.icon;
             colorClass = iconData.color;
         }
@@ -724,99 +576,32 @@ const App = {
     },
 
     /**
- * Update bulk actions visibility
- */
-    updateBulkActions() {
-        const bulkActions = document.getElementById('bulk-actions');
-        const bulkDeleteBtn = document.getElementById('bulk-delete-btn');
-        const selectedCount = document.getElementById('selected-count');
-
-        const hasSelection = this.selectedItems.size > 0;
-
-        // Container
-        if (bulkActions) {
-            bulkActions.style.opacity = hasSelection ? 1 : 0;
-        }
-
-        // Button (defensive: in case container styling changes later)
-        if (bulkDeleteBtn) {
-            bulkDeleteBtn.style.display = hasSelection ? 'inline-flex' : 'none';
-        }
-
-        if (selectedCount) {
-            selectedCount.textContent = String(this.selectedItems.size);
-        }
-    },
-
-    /**
-     * ========================================
-     * HIERARCHICAL KEY MANAGEMENT
-     * ========================================
-     */
-
-    /**
      * Get the parent key for creating new items
-     * If in root, return master key. Otherwise return current folder's key
      */
     async getParentKey() {
         if (this.currentFolderId === null) {
-            // In root folder, use master key
             return this.masterKey;
         }
 
-        // Get current folder's decrypted key from cache or decrypt it
         if (this.folderKeyCache.has(this.currentFolderId)) {
             return this.folderKeyCache.get(this.currentFolderId);
         }
 
-        // Need to decrypt the current folder's key
         if (!this.currentFolder || !this.currentFolder.encrypted_key) {
             throw new Error('Current folder key not found');
         }
 
-        // Recursively get parent key to decrypt current folder's key
-        const parentKey = await this.getKeyForItem(this.currentFolder);
-        return parentKey;
+        return await FolderOperations.getKeyForItem(
+            this.currentFolder,
+            this.files,
+            this.masterKey,
+            this.folderKeyCache
+        );
     },
 
     /**
-     * Get decrypted key for any file/folder item
-     * Recursively decrypts up the hierarchy
+     * Update breadcrumb navigation
      */
-    async getKeyForItem(item) {
-        // Check cache first
-        if (item.type === 'folder' && this.folderKeyCache.has(item.id)) {
-            return this.folderKeyCache.get(item.id);
-        }
-
-        let parentKey;
-        if (item.parent_id === null || item.parent_id === undefined) {
-            // Root level item, use master key
-            parentKey = this.masterKey;
-        } else {
-            // Get parent folder's key
-            const parentFolder = this.files.find(f => f.id === item.parent_id);
-            if (!parentFolder) {
-                throw new Error('Parent folder not found');
-            }
-            parentKey = await this.getKeyForItem(parentFolder);
-        }
-
-        // Decrypt this item's key
-        const itemKeyRaw = await CryptoUtils.decryptItemKey(item.encrypted_key, parentKey);
-        const itemKey = await CryptoUtils.importRawKey(itemKeyRaw);
-
-        // Cache if it's a folder
-        if (item.type === 'folder') {
-            this.folderKeyCache.set(item.id, itemKey);
-        }
-
-        return itemKey;
-    },
-
-    /**
-         * Update breadcrumb navigation
-         */
     updateBreadcrumb() {
         const breadcrumb = document.getElementById('breadcrumb');
         breadcrumb.innerHTML = '';
@@ -856,7 +641,6 @@ const App = {
      * Open folder
      */
     async openFolder(folderId, folderName) {
-        // Store the folder object before navigating into it
         const folderObj = this.files.find(f => f.id === folderId && f.type === 'folder');
         if (folderObj) {
             this.currentFolder = folderObj;
@@ -885,10 +669,7 @@ const App = {
         const folder = this.folderHistory[index];
         this.currentFolderId = folder.id;
         
-        // We need to load the parent folder to get the folder object
-        // Then navigate into it
         if (index === 0) {
-            // First folder in history, load from root
             const response = await API.files.list(null);
             if (response.success) {
                 const folderObj = response.data.files.find(f => f.id === folder.id && f.type === 'folder');
@@ -897,7 +678,6 @@ const App = {
                 }
             }
         } else {
-            // Load from parent folder
             const parentFolder = this.folderHistory[index - 1];
             const response = await API.files.list(parentFolder.id);
             if (response.success) {
@@ -912,132 +692,27 @@ const App = {
     },
 
     /**
-     * Handle file upload with chunked support
+     * Handle file upload
      */
     async handleFileUpload(files) {
         if (!files || files.length === 0) return;
 
-        const totalFiles = files.length;
-        let successCount = 0;
-        let failedCount = 0;
-
         try {
-            for (let i = 0; i < files.length; i++) {
-                const file = files[i];
-                
-                // Check if cancelled
-                if (App.uploadProgressState.cancelled) {
-                    showToast(`Upload cancelled. ${successCount} of ${totalFiles} files uploaded.`, 'info');
-                    break;
-                }
-
-                showLoading(`Encrypting ${file.name}...`);
-
-                // Get parent key (master key if root, or current folder's key)
-                const parentKey = await this.getParentKey();
-
-                // Generate new key for this file
-                const fileKey = CryptoUtils.generateItemKey();
-
-                // Encrypt file key with parent key
-                const encryptedFileKey = await CryptoUtils.encryptItemKey(fileKey, parentKey);
-
-                // Encrypt file in chunks to save memory
-                const encryptedBlob = await CryptoUtils.encryptFileInChunks(
-                    file,
-                    this.masterKey,
-                    (processed, total) => {
-                        const percent = Math.round((processed / total) * 100);
-                        updateLoadingText(`Encrypting ${file.name}: ${percent}%`);
-                    }
-                );
-
-                // Check if cancelled after encryption
-                if (App.uploadProgressState.cancelled) {
-                    hideLoading();
-                    showToast(`Upload cancelled. ${successCount} of ${totalFiles} files uploaded.`, 'info');
-                    break;
-                }
-
-                // Encrypt filename
-                const encryptedName = await CryptoUtils.encryptFilename(file.name, this.masterKey);
-
-                hideLoading();
-
-                const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
-                const USE_CHUNKED = encryptedBlob.size > CHUNK_SIZE;
-
-                // Show progress bar with file count
-                showProgress('upload', file.name, encryptedBlob.size, i + 1, totalFiles);
-
-                try {
-                    if (USE_CHUNKED) {
-                        // Chunked upload for large files
-                        const response = await this.uploadFileInChunks(
-                            encryptedBlob,
-                            encryptedName,
-                            file.size,
-                            encryptedFileKey,
-                            this.currentFolderId,
-                            CHUNK_SIZE,
-                            file.name
-                        );
-
-                        if (!response.success) {
-                            throw new Error(response.message || `Failed to upload ${file.name}`);
-                        }
-                    } else {
-                        // Standard upload for small files
-                        const response = await API.files.upload(
-                            encryptedBlob,
-                            encryptedName,
-                            file.size,
-                            encryptedFileKey,
-                            this.currentFolderId,
-                            (loaded, total) => {
-                                if (!App.uploadProgressState.cancelled) {
-                                    updateProgress('upload', loaded, total);
-                                }
-                            }
-                        );
-
-                        if (!response.success) {
-                            throw new Error(response.message || `Failed to upload ${file.name}`);
-                        }
-                    }
-
-                    // Check if cancelled after upload
-                    if (App.uploadProgressState.cancelled) {
-                        showToast(`Upload cancelled. ${successCount} of ${totalFiles} files uploaded.`, 'info');
-                        break;
-                    }
-
-                    successCount++;
-                    
-                    // Show completion briefly if not the last file
-                    if (i < files.length - 1) {
-                        document.getElementById('upload-progress-subtitle').textContent = `Complete! (${i + 1}/${totalFiles})`;
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                    } else {
-                        completeProgress('upload');
-                    }
-                    
-                    showToast(`${file.name} uploaded successfully!`, 'success');
-                } catch (fileError) {
-                    failedCount++;
-                    console.error(`Failed to upload ${file.name}:`, fileError);
-                    showToast(`Failed to upload ${file.name}: ${fileError.message}`, 'error');
-                }
-            }
+            const result = await FileOperations.handleFileUpload(
+                files,
+                this.masterKey,
+                this.currentFolderId,
+                () => this.getParentKey()
+            );
 
             await this.loadFiles(this.currentFolderId);
             await this.loadQuota();
-            
-            if (!App.uploadProgressState.cancelled && totalFiles > 1) {
-                if (failedCount === 0) {
-                    showToast(`All ${successCount} files uploaded successfully!`, 'success');
-                } else if (successCount > 0) {
-                    showToast(`${successCount} files uploaded, ${failedCount} failed`, 'info');
+
+            if (!result.cancelled && result.totalFiles > 1) {
+                if (result.failedCount === 0) {
+                    showToast(`All ${result.successCount} files uploaded successfully!`, 'success');
+                } else if (result.successCount > 0) {
+                    showToast(`${result.successCount} of ${result.totalFiles} files uploaded successfully`, 'info');
                 }
             }
         } catch (error) {
@@ -1050,162 +725,14 @@ const App = {
     },
 
     /**
-     * Upload file in chunks
-     */
-    async uploadFileInChunks(encryptedBlob, encryptedFilename, originalSize, encryptedFileKey, parentId, chunkSize, displayName) {
-        const uploadId = this.generateUploadId();
-        const totalSize = encryptedBlob.size;
-        const totalChunks = Math.ceil(totalSize / chunkSize);
-        let uploadedBytes = 0;
-
-        for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-            // Check if cancelled
-            if (App.uploadProgressState.cancelled) {
-                throw new Error('Upload cancelled by user');
-            }
-
-            const start = chunkIndex * chunkSize;
-            const end = Math.min(start + chunkSize, totalSize);
-            const chunkBlob = encryptedBlob.slice(start, end);
-
-            const response = await API.files.uploadChunk(
-                uploadId,
-                chunkIndex,
-                chunkBlob,
-                (loaded, total) => {
-                    if (!App.uploadProgressState.cancelled) {
-                        updateProgress('upload', uploadedBytes + loaded, totalSize);
-                    }
-                }
-            );
-
-            if (!response.success) {
-                throw new Error(response.message || 'Chunk upload failed');
-            }
-
-            uploadedBytes += chunkBlob.size;
-            updateProgress('upload', uploadedBytes, totalSize);
-        }
-
-        // Finalize upload
-        document.getElementById('upload-progress-subtitle').textContent = 'Finalizing...';
-        const finalizeResponse = await API.files.finalizeUpload(
-            uploadId,
-            encryptedFilename,
-            originalSize,
-            totalChunks,
-            encryptedFileKey,
-            parentId
-        );
-
-        return finalizeResponse;
-    },
-
-    /**
-     * Generate unique upload ID
-     */
-    generateUploadId() {
-        return 'upload_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    },
-
-    /**
-     * Download file with range-based parallel downloading
+     * Download file
      */
     async downloadFile(fileId, filename) {
         try {
             showLoading(`Preparing download for ${filename}...`);
-
-            // Get file size first
-            const fileSize = await API.files.getFileSize(fileId);
-
             hideLoading();
             
-            // Show progress bar
-            showProgress('download', filename, fileSize);
-
-            // Use parallel range-based download for files larger than 5MB
-            const USE_RANGE_DOWNLOAD = fileSize > 5 * 1024 * 1024;
-
-            let encryptedBlob;
-
-            if (USE_RANGE_DOWNLOAD) {
-                encryptedBlob = await this.downloadFileInRanges(fileId, fileSize, filename);
-            } else {
-                // Standard download for small files
-                const response = await API.files.download(fileId);
-                if (!response.ok) {
-                    throw new Error('Download failed');
-                }
-
-                // Track download progress
-                const contentLength = response.headers.get('Content-Length');
-                const total = parseInt(contentLength, 10);
-                let loaded = 0;
-
-                const reader = response.body.getReader();
-                const chunks = [];
-
-                while (true) {
-                    // Check if cancelled
-                    if (App.downloadProgressState.cancelled) {
-                        reader.cancel();
-                        throw new Error('Download cancelled by user');
-                    }
-
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    chunks.push(value);
-                    loaded += value.length;
-
-                    if (total && !App.downloadProgressState.cancelled) {
-                        updateProgress('download', loaded, total);
-                    }
-                }
-
-                encryptedBlob = new Blob(chunks);
-            }
-
-            // Check if cancelled before decryption
-            if (App.downloadProgressState.cancelled) {
-                throw new Error('Download cancelled by user');
-            }
-
-            document.getElementById('download-progress-subtitle').textContent = 'Decrypting...';
-
-            // Try to detect format: new chunked format has size markers after main IV
-            // Old format: [IV(12)] + [encrypted_data]
-            // New format: [IV(12)] + [size(4) + chunkIV(12) + encrypted_data] + ...
-            let decryptedData;
-
-            try {
-                // Try new chunked format first
-                decryptedData = await CryptoUtils.decryptFileInChunks(
-                    encryptedBlob,
-                    this.masterKey,
-                    (processed, total) => {
-                        // Show decryption progress
-                    }
-                );
-            } catch (error) {
-                console.log('Trying legacy decryption format...');
-                // Fall back to old format
-                const encryptedData = await encryptedBlob.arrayBuffer();
-                decryptedData = await CryptoUtils.decryptFile(encryptedData, this.masterKey);
-            }
-
-            // Create blob and download
-            const blob = new Blob([decryptedData]);
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
-            completeProgress('download');
+            await FileOperations.downloadFile(fileId, filename, this.masterKey);
             showToast(`${filename} downloaded successfully!`, 'success');
         } catch (error) {
             console.error('Download error:', error);
@@ -1213,67 +740,6 @@ const App = {
             hideProgress('download');
             hideLoading();
         }
-    },
-
-    /**
-     * Download file in parallel ranges with retry support
-     */
-    async downloadFileInRanges(fileId, fileSize, filename) {
-        const CHUNK_SIZE = 10 * 1024 * 1024; // 10MB per chunk
-        const MAX_PARALLEL = 3; // Download 3 chunks in parallel
-        const MAX_RETRIES = 3;
-
-        const totalChunks = Math.ceil(fileSize / CHUNK_SIZE);
-        const chunks = new Array(totalChunks);
-        let downloadedBytes = 0;
-
-        // Download chunk with retry logic
-        const downloadChunk = async (chunkIndex, retries = 0) => {
-            // Check if cancelled
-            if (App.downloadProgressState.cancelled) {
-                throw new Error('Download cancelled by user');
-            }
-
-            const start = chunkIndex * CHUNK_SIZE;
-            const end = Math.min(start + CHUNK_SIZE - 1, fileSize - 1);
-
-            try {
-                const response = await API.files.downloadRange(fileId, start, end);
-
-                if (!response.ok) {
-                    throw new Error(`Chunk ${chunkIndex} download failed: ${response.status}`);
-                }
-
-                const chunkData = await response.arrayBuffer();
-                chunks[chunkIndex] = new Uint8Array(chunkData);
-
-                downloadedBytes += chunkData.byteLength;
-                if (!App.downloadProgressState.cancelled) {
-                    updateProgress('download', downloadedBytes, fileSize);
-                }
-
-                return true;
-            } catch (error) {
-                if (retries < MAX_RETRIES && !App.downloadProgressState.cancelled) {
-                    console.log(`Retrying chunk ${chunkIndex}, attempt ${retries + 1}/${MAX_RETRIES}`);
-                    await new Promise(resolve => setTimeout(resolve, 1000 * (retries + 1)));
-                    return downloadChunk(chunkIndex, retries + 1);
-                }
-                throw error;
-            }
-        };
-
-        // Download chunks in parallel batches
-        for (let i = 0; i < totalChunks; i += MAX_PARALLEL) {
-            const batch = [];
-            for (let j = 0; j < MAX_PARALLEL && (i + j) < totalChunks; j++) {
-                batch.push(downloadChunk(i + j));
-            }
-            await Promise.all(batch);
-        }
-
-        // Combine all chunks into a single blob
-        return new Blob(chunks);
     },
 
     /**
@@ -1286,12 +752,8 @@ const App = {
 
         try {
             showLoading(`Deleting ${filename}...`);
-
-            const response = await API.files.delete(fileId);
-            if (!response.success) {
-                throw new Error(response.message || 'Delete failed');
-            }
-
+            await FileOperations.deleteFile(fileId, filename);
+            
             showToast(`${filename} deleted successfully!`, 'success');
             await this.loadFiles(this.currentFolderId);
             await this.loadQuota();
@@ -1325,14 +787,7 @@ const App = {
 
         try {
             showLoading('Renaming...');
-
-            // Encrypt new name
-            const encryptedName = await CryptoUtils.encryptFilename(newName, this.masterKey);
-
-            const response = await API.files.rename(this.selectedFileForRename, encryptedName);
-            if (!response.success) {
-                throw new Error(response.message || 'Rename failed');
-            }
+            await FileOperations.renameFile(this.selectedFileForRename, newName, this.masterKey);
 
             closeRenameModal();
             showToast('Renamed successfully!', 'success');
@@ -1366,31 +821,20 @@ const App = {
 
         try {
             showLoading('Creating folder...');
-
-            // Get parent key (master key if root, or current folder's key)
-            const parentKey = await this.getParentKey();
-
-            // Generate new key for this folder
-            const folderKey = CryptoUtils.generateItemKey();
-
-            // Encrypt folder key with parent key
-            const encryptedFolderKey = await CryptoUtils.encryptItemKey(folderKey, parentKey);
-
-            // Encrypt folder name
-            const encryptedName = await CryptoUtils.encryptFilename(folderName, this.masterKey);
-
-            const response = await API.files.createFolder(encryptedName, encryptedFolderKey, this.currentFolderId);
-            if (!response.success) {
-                throw new Error(response.message || 'Failed to create folder');
-            }
+            await FolderOperations.createFolder(
+                folderName,
+                this.masterKey,
+                this.currentFolderId,
+                () => this.getParentKey()
+            );
 
             closeNewFolderModal();
             showToast('Folder created successfully!', 'success');
             await this.loadFiles(this.currentFolderId);
             hideLoading();
         } catch (error) {
-            console.error('Create folder error:', error);
-            showToast(error.message || 'Failed to create folder', 'error');
+            console.error('Folder creation error:', error);
+            showToast(error.message || 'Folder creation failed', 'error');
             hideLoading();
         }
     },
@@ -1410,54 +854,48 @@ const App = {
     async loadFolderTree() {
         try {
             showLoading('Loading folders...');
-
-            const response = await API.files.list(null);
+            
+            const response = await API.files.listAll();
             if (!response.success) {
                 throw new Error('Failed to load folders');
             }
 
-            const allFiles = response.data.files || response.data;
-            const folders = allFiles.filter(f => f.type === 'folder');
+            const selectedFile = this.files.find(f => f.id === this.selectedFileForMove);
+            const tree = await FolderOperations.buildFolderTree(
+                response.data.files,
+                this.masterKey,
+                this.currentFolderId,
+                this.selectedFileForMove
+            );
 
-            const treeContainer = document.getElementById('folder-tree');
-            treeContainer.innerHTML = '';
+            // Render tree
+            const container = document.getElementById('folder-tree');
+            container.innerHTML = '';
 
-            // Root folder option
-            const rootItem = document.createElement('div');
-            rootItem.className = 'folder-item';
-            rootItem.dataset.folderId = 'null';
-            rootItem.innerHTML = `
-                <i class="fas fa-home" style="margin-right: 8px;"></i>
-                <span>Root</span>
-            `;
-            rootItem.onclick = () => this.selectMoveDestination(rootItem);
-            treeContainer.appendChild(rootItem);
+            tree.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'folder-item' + (item.disabled ? ' disabled' : '');
+                div.style.paddingLeft = (item.level * 20) + 'px';
+                div.dataset.folderId = item.id;
 
-            // Decrypt and display folders
-            for (const folder of folders) {
-                if (folder.id === this.selectedFileForMove) continue; // Can't move to itself
+                div.innerHTML = `
+                    <i class="fas ${item.id === null ? 'fa-home' : 'fa-folder'}"></i>
+                    <span>${escapeHtml(item.name)}</span>
+                `;
 
-                const folderItem = document.createElement('div');
-                folderItem.className = 'folder-item';
-                folderItem.dataset.folderId = folder.id;
-
-                try {
-                    const displayName = await CryptoUtils.decryptFilename(folder.encrypted_name, this.masterKey);
-                    folderItem.innerHTML = `
-                        <i class="fas fa-folder-open" style="margin-right: 8px;"></i>
-                        <span>${escapeHtml(displayName)}</span>
-                    `;
-                    folderItem.onclick = () => this.selectMoveDestination(folderItem);
-                    treeContainer.appendChild(folderItem);
-                } catch (error) {
-                    console.error('Failed to decrypt folder name:', error);
+                if (!item.disabled) {
+                    div.onclick = function() {
+                        App.selectMoveDestination(this);
+                    };
                 }
-            }
+
+                container.appendChild(div);
+            });
 
             hideLoading();
         } catch (error) {
-            console.error('Load folder tree error:', error);
-            showToast(error.message || 'Failed to load folders', 'error');
+            console.error('Failed to load folder tree:', error);
+            showToast('Failed to load folders', 'error');
             hideLoading();
         }
     },
@@ -1478,7 +916,7 @@ const App = {
     async confirmMove() {
         const selectedFolder = document.querySelector('.folder-item.selected');
         if (!selectedFolder) {
-            showToast('Please select a destination folder', 'error');
+            showToast('Please select a destination', 'error');
             return;
         }
 
@@ -1486,11 +924,16 @@ const App = {
 
         try {
             showLoading('Moving...');
-
-            const response = await API.files.move(this.selectedFileForMove, newParentId);
-            if (!response.success) {
-                throw new Error(response.message || 'Move failed');
-            }
+            
+            const item = this.files.find(f => f.id === this.selectedFileForMove);
+            await FolderOperations.moveFile(
+                this.selectedFileForMove,
+                newParentId,
+                item,
+                this.files,
+                this.masterKey,
+                this.folderKeyCache
+            );
 
             closeMoveModal();
             showToast('Moved successfully!', 'success');
@@ -1521,324 +964,44 @@ const App = {
         const newPassword = document.getElementById('new-password').value;
         const confirmNewPassword = document.getElementById('confirm-new-password').value;
 
-        if (!currentPassword || !newPassword || !confirmNewPassword) {
-            showToast('Please fill in all fields', 'error');
-            return;
-        }
-
-        if (newPassword !== confirmNewPassword) {
-            showToast('New passwords do not match', 'error');
-            return;
-        }
-
-        if (newPassword.length < 4) {
-            showToast('New password must be at least 4 characters', 'error');
-            return;
-        }
-
         try {
             showLoading('Changing password...');
-
-            // Get current salts
-            const saltResponse = await API.auth.getClientSalt(this.currentUser.username);
-            if (!saltResponse.success) {
-                throw new Error('Failed to get salts');
-            }
-
-            const currentClientSalt = CryptoUtils.hexToArrayBuffer(saltResponse.data.client_salt);
-            const currentPasswordHash = await CryptoUtils.hashPassword(currentPassword, currentClientSalt);
-
-            // Generate new salts
-            const newClientSalt = CryptoUtils.generateSalt();
-            const newKdfSalt = CryptoUtils.generateSalt();
-
-            // Hash new password
-            const newPasswordHash = await CryptoUtils.hashPassword(newPassword, newClientSalt);
-
-            // Re-encrypt master key with new password
-            const newPasswordKey = await CryptoUtils.deriveKey(newPassword, newKdfSalt);
-            const newEncryptedMasterKey = await CryptoUtils.encryptMasterKey(this.masterKey, newPasswordKey);
-
-            // Change password
-            const response = await API.auth.changePassword(
-                currentPasswordHash,
-                newPasswordHash,
-                CryptoUtils.arrayBufferToHex(newClientSalt),
-                CryptoUtils.arrayBufferToHex(newKdfSalt),
-                newEncryptedMasterKey
+            await AuthModule.handleChangePassword(
+                currentPassword,
+                newPassword,
+                confirmNewPassword,
+                this.masterKey
             );
 
-            if (!response.success) {
-                throw new Error(response.message || 'Failed to change password');
-            }
-
             closeChangePasswordModal();
-            showToast('Password changed successfully!', 'success');
+            showToast('Password changed successfully! Please log in again.', 'success');
+            
+            // Log out user
+            setTimeout(() => {
+                this.logout();
+            }, 2000);
+            
             hideLoading();
         } catch (error) {
-            console.error('Change password error:', error);
-            showToast(error.message || 'Failed to change password', 'error');
+            console.error('Password change error:', error);
+            showToast(error.message || 'Password change failed', 'error');
             hideLoading();
         }
-    }
-};
+    },
 
-// Utility Functions
-
-function showLoading(text = 'Loading...') {
-    document.getElementById('loading-overlay').classList.remove('hidden');
-    document.getElementById('loading-text').textContent = text;
-}
-
-function hideLoading() {
-    document.getElementById('loading-overlay').classList.add('hidden');
-}
-
-function updateLoadingText(text) {
-    document.getElementById('loading-text').textContent = text;
-}
-
-function showToast(message, type = 'info') {
-    const container = document.getElementById('toast-container');
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-
-    const icons = {
-        success: '<i class="fas fa-check-circle" stroke-width="2" style="color: #10b981;"></i>',
-        error: '<i class="fas fa-exclamation-circle" stroke-width="2" style="color: #ef4444;"></i>',
-        info: '<i class="fas fa-info-circle" stroke-width="2" style="color: #3b82f6;"></i>'
-    };
-
-    toast.innerHTML = `
-        ${icons[type] || icons.info}
-        <span class="toast-message">${escapeHtml(message)}</span>
-        <button class="toast-close" onclick="this.parentElement.remove()">&times;</button>
-    `;
-
-    container.appendChild(toast);
-
-    setTimeout(() => {
-        toast.remove();
-    }, 5000);
-}
-
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, m => map[m]);
-}
-
-function formatFileSize(bytes) {
-    if (bytes === 0 || bytes === '0') return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
-}
-
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diff = now - date;
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-    if (days === 0) return 'Today';
-    if (days === 1) return 'Yesterday';
-    if (days < 7) return `${days} days ago`;
-
-    return date.toLocaleDateString();
-}
-
-// Modal control functions
-function closeChangePasswordModal() {
-    document.getElementById('change-password-modal').classList.add('hidden');
-}
-
-function closeRenameModal() {
-    document.getElementById('rename-modal').classList.add('hidden');
-}
-
-function closeNewFolderModal() {
-    document.getElementById('new-folder-modal').classList.add('hidden');
-}
-
-function closeMoveModal() {
-    document.getElementById('move-modal').classList.add('hidden');
-}
-
-// ===== Progress Bar Functions =====
-
-/**
- * Show progress bar
- * @param {string} type - 'upload' or 'download'
- * @param {string} filename - Name of the file
- * @param {number} total - Total size in bytes
- * @param {number} currentFile - Current file number (optional)
- * @param {number} totalFiles - Total number of files (optional)
- */
-function showProgress(type, filename, total, currentFile = 1, totalFiles = 1) {
-    const modal = document.getElementById(`${type}-progress-modal`);
-    const title = document.getElementById(`${type}-progress-title`);
-    const progressState = type === 'upload' ? App.uploadProgressState : App.downloadProgressState;
-    
-    progressState.isActive = true;
-    progressState.startTime = Date.now();
-    progressState.lastUpdate = Date.now();
-    progressState.loaded = 0;
-    progressState.total = total;
-    progressState.speed = 0;
-    progressState.filename = filename;
-    progressState.cancelled = false;
-    progressState.currentFile = currentFile;
-    progressState.totalFiles = totalFiles;
-    
-    // Set title based on type and file count
-    if (totalFiles > 1) {
-        title.textContent = type === 'upload' 
-            ? `Uploading (${currentFile}/${totalFiles})` 
-            : `Downloading (${currentFile}/${totalFiles})`;
-    } else {
-        title.textContent = type === 'upload' ? 'Uploading' : 'Downloading';
-    }
-    
-    document.getElementById(`${type}-progress-subtitle`).textContent = filename;
-    document.getElementById(`${type}-progress-percentage`).textContent = '0%';
-    document.getElementById(`${type}-progress-bar-fill`).style.width = '0%';
-    document.getElementById(`${type}-progress-speed`).textContent = '-- KB/s';
-    document.getElementById(`${type}-progress-size`).textContent = `0 / ${formatFileSize(total)}`;
-    document.getElementById(`${type}-progress-time`).textContent = 'Calculating...';
-    
-    modal.classList.remove('hidden', 'complete');
-}
-
-/**
- * Update progress bar
- * @param {string} type - 'upload' or 'download'
- * @param {number} loaded - Bytes loaded
- * @param {number} total - Total bytes
- */
-function updateProgress(type, loaded, total) {
-    const progressState = type === 'upload' ? App.uploadProgressState : App.downloadProgressState;
-    if (!progressState.isActive) return;
-    
-    const now = Date.now();
-    const timeDiff = (now - progressState.lastUpdate) / 1000; // seconds
-    
-    if (timeDiff > 0.1) { // Update at most every 100ms
-        const bytesDiff = loaded - progressState.loaded;
-        const speed = bytesDiff / timeDiff; // bytes per second
+    /**
+     * Cancel progress operation
+     */
+    cancelProgress(type) {
+        const progressState = type === 'upload' ? this.uploadProgressState : this.downloadProgressState;
+        const operationType = type === 'upload' ? 'upload' : 'download';
         
-        // Smooth speed calculation (exponential moving average)
-        progressState.speed = progressState.speed * 0.7 + speed * 0.3;
-        progressState.loaded = loaded;
-        progressState.lastUpdate = now;
-        
-        // Update UI
-        const percentage = Math.min(Math.round((loaded / total) * 100), 100);
-        document.getElementById(`${type}-progress-percentage`).textContent = percentage + '%';
-        document.getElementById(`${type}-progress-bar-fill`).style.width = percentage + '%';
-        
-        // Update speed
-        const speedKB = progressState.speed / 1024;
-        const speedMB = speedKB / 1024;
-        let speedText;
-        if (speedMB > 1) {
-            speedText = speedMB.toFixed(2) + ' MB/s';
-        } else {
-            speedText = speedKB.toFixed(2) + ' KB/s';
-        }
-        document.getElementById(`${type}-progress-speed`).textContent = speedText;
-        
-        // Update size
-        document.getElementById(`${type}-progress-size`).textContent = 
-            `${formatFileSize(loaded)} / ${formatFileSize(total)}`;
-        
-        // Calculate time remaining
-        if (progressState.speed > 0) {
-            const remaining = (total - loaded) / progressState.speed;
-            document.getElementById(`${type}-progress-time`).textContent = formatTime(remaining);
+        if (confirm(`Are you sure you want to cancel this ${operationType}?`)) {
+            progressState.cancelled = true;
+            showToast(`${operationType.charAt(0).toUpperCase() + operationType.slice(1)} cancelled`, 'info');
         }
     }
-}
-
-/**
- * Complete progress (show success state briefly then hide)
- * @param {string} type - 'upload' or 'download'
- */
-function completeProgress(type) {
-    const progressState = type === 'upload' ? App.uploadProgressState : App.downloadProgressState;
-    if (!progressState.isActive) return;
-    
-    const modal = document.getElementById(`${type}-progress-modal`);
-    const card = modal.querySelector('.progress-card');
-    
-    document.getElementById(`${type}-progress-percentage`).textContent = '100%';
-    document.getElementById(`${type}-progress-bar-fill`).style.width = '100%';
-    document.getElementById(`${type}-progress-subtitle`).textContent = 'Complete!';
-    document.getElementById(`${type}-progress-time`).textContent = 'Done';
-    
-    card.classList.add('complete');
-    
-    // Hide after 2 seconds
-    setTimeout(() => {
-        hideProgress(type);
-    }, 2000);
-}
-
-/**
- * Hide progress bar
- * @param {string} type - 'upload' or 'download'
- */
-function hideProgress(type) {
-    const modal = document.getElementById(`${type}-progress-modal`);
-    const card = modal.querySelector('.progress-card');
-    const progressState = type === 'upload' ? App.uploadProgressState : App.downloadProgressState;
-    
-    modal.classList.add('hidden');
-    card.classList.remove('complete');
-    progressState.isActive = false;
-    progressState.cancelled = false;
-    progressState.currentFile = 0;
-    progressState.totalFiles = 0;
-}
-
-/**
- * Format time in seconds to human readable
- */
-function formatTime(seconds) {
-    if (seconds < 60) {
-        return Math.round(seconds) + ' sec';
-    } else if (seconds < 3600) {
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.round(seconds % 60);
-        return `${mins}m ${secs}s`;
-    } else {
-        const hours = Math.floor(seconds / 3600);
-        const mins = Math.floor((seconds % 3600) / 60);
-        return `${hours}h ${mins}m`;
-    }
-}
-
-// Add cancelProgress to App object
-App.cancelProgress = function(type) {
-    const progressState = type === 'upload' ? App.uploadProgressState : App.downloadProgressState;
-    const operationType = type === 'upload' ? 'upload' : 'download';
-    
-    if (confirm(`Are you sure you want to cancel this ${operationType}?`)) {
-        progressState.cancelled = true;
-        hideProgress(type);
-        showToast(`${operationType.charAt(0).toUpperCase() + operationType.slice(1)} cancelled`, 'info');
-    }
 };
-
-function confirmMove() {
-    App.confirmMove();
-}
 
 // Initialize app when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {

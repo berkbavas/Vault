@@ -470,6 +470,15 @@
     <!-- Scripts -->
     <script src="assets/js/crypto-utils.js?v=<?php echo filemtime('assets/js/crypto-utils.js'); ?>"></script>
     <script src="assets/js/api.js?v=<?php echo filemtime('assets/js/api.js'); ?>"></script>
+    
+    <!-- Modular Components -->
+    <script src="assets/js/modules/ui-helpers.js?v=<?php echo filemtime('assets/js/modules/ui-helpers.js'); ?>"></script>
+    <script src="assets/js/modules/progress-bar.js?v=<?php echo filemtime('assets/js/modules/progress-bar.js'); ?>"></script>
+    <script src="assets/js/modules/auth.js?v=<?php echo filemtime('assets/js/modules/auth.js'); ?>"></script>
+    <script src="assets/js/modules/file-operations.js?v=<?php echo filemtime('assets/js/modules/file-operations.js'); ?>"></script>
+    <script src="assets/js/modules/folder-operations.js?v=<?php echo filemtime('assets/js/modules/folder-operations.js'); ?>"></script>
+    
+    <!-- Main Application -->
     <script src="assets/js/app.js?v=<?php echo filemtime('assets/js/app.js'); ?>"></script>
 </body>
 
