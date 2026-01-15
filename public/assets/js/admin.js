@@ -44,8 +44,8 @@ function renderUsers(users) {
     emptyState.style.display = 'none';
 
     tableBody.innerHTML = users.map(user => {
-        const usedGB = (user.storage_used / (1024 * 1024 * 1024)).toFixed(2);
-        const quotaGB = (user.storage_quota / (1024 * 1024 * 1024)).toFixed(2);
+        const usedMB = (user.storage_used / (1024 * 1024)).toFixed(2);
+        const quotaMB = (user.storage_quota / (1024 * 1024)).toFixed(2);
         const percentage = user.storage_quota > 0 ? (user.storage_used / user.storage_quota * 100).toFixed(1) : 0;
         const initial = user.username.charAt(0).toUpperCase();
         const createdDate = new Date(user.created_at).toLocaleDateString();
@@ -69,7 +69,7 @@ function renderUsers(users) {
                         </td>
                         <td>
                             <div class="quota-info">
-                                <div class="quota-text">${usedGB} GB / ${quotaGB} GB</div>
+                                <div class="quota-text">${usedMB} MB / ${quotaMB} MB</div>
                                 <div class="quota-bar-mini">
                                     <div class="quota-bar-mini-fill" style="width: ${Math.min(percentage, 100)}%"></div>
                                 </div>
@@ -79,7 +79,7 @@ function renderUsers(users) {
                         <td>${lastLogin}</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-icon" onclick="openEditQuotaModal(${user.id}, '${escapeHtml(user.username)}', ${quotaGB})" title="Edit Quota">
+                                <button class="btn-icon" onclick="openEditQuotaModal(${user.id}, '${escapeHtml(user.username)}', ${quotaMB})" title="Edit Quota">
                                     <i class="fa-solid fa-pen-to-square"></i>
                                 </button>
                                 <button class="btn-icon danger" onclick="deleteUser(${user.id}, '${escapeHtml(user.username)}')" title="Delete User" ${user.is_admin ? 'disabled' : ''}>
@@ -118,8 +118,8 @@ document.getElementById('edit-quota-form').addEventListener('submit', async (e) 
     e.preventDefault();
 
     const userId = parseInt(document.getElementById('edit-quota-user-id').value);
-    const quotaGB = parseFloat(document.getElementById('edit-quota-value').value);
-    const quotaBytes = Math.floor(quotaGB * 1024 * 1024 * 1024);
+    const quotaMB = parseFloat(document.getElementById('edit-quota-value').value);
+    const quotaBytes = Math.floor(quotaMB * 1024 * 1024);
 
     try {
         showLoading('Updating quota...');

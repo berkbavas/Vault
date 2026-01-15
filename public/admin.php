@@ -127,8 +127,8 @@
                     <input type="text" id="edit-quota-username" disabled>
                 </div>
                 <div class="field">
-                    <label for="edit-quota-value">Storage Quota (GB)</label>
-                    <input type="number" id="edit-quota-value" required min="0" step="0.1" placeholder="10">
+                    <label for="edit-quota-value">Storage Quota (MB)</label>
+                    <input type="number" id="edit-quota-value" required placeholder="10240">
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeEditQuotaModal()">Cancel</button>

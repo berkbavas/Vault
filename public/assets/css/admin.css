@@ -2,100 +2,174 @@
     max-width: 1400px;
     margin: 0 auto;
     padding: 2rem;
+    min-height: 100vh;
 }
 
 .admin-header {
-    margin-bottom: 2rem;
+    margin-bottom: 2.5rem;
+    padding: 2rem;
+    background: rgba(92, 255, 122, 0.03);
+    border: 1px solid rgba(92, 255, 122, 0.18);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+}
+
+.admin-header::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary) 0%, var(--primary-2) 100%);
+    opacity: 0.8;
 }
 
 .admin-header h1 {
-    font-size: 2rem;
+    font-size: 2.25rem;
     margin-bottom: 0.5rem;
-    color: var(--text-primary);
+    color: var(--primary-2);
+    font-weight: 1000;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.admin-header h1 i {
+    font-size: 2rem;
+    color: var(--primary);
 }
 
 .admin-header p {
-    color: var(--text-secondary);
+    color: var(--muted);
+    font-size: 0.95rem;
 }
 
 .admin-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
 }
 
 .stat-card {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(92, 255, 122, 0.18);
+    border-radius: var(--radius);
     padding: 1.5rem;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.stat-card:hover {
+    border-color: rgba(92, 255, 122, 0.35);
+    box-shadow: var(--shadow-md), 0 0 20px rgba(92, 255, 122, 0.1);
+    transform: translateY(-2px);
+}
+
+.stat-card:hover::before {
+    opacity: 1;
 }
 
 .stat-card-header {
     display: flex;
     align-items: center;
     gap: 1rem;
-    margin-bottom: 1rem;
 }
 
 .stat-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 10px;
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.5rem;
+    font-size: 1.75rem;
+    border: 1px solid rgba(92, 255, 122, 0.25);
+    background: rgba(92, 255, 122, 0.06);
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover .stat-icon {
+    transform: scale(1.1);
+    box-shadow: 0 0 20px rgba(92, 255, 122, 0.3);
 }
 
 .stat-icon.primary {
-    background: rgba(99, 102, 241, 0.1);
+    background: rgba(92, 255, 122, 0.08);
     color: var(--primary);
+    border-color: rgba(92, 255, 122, 0.35);
 }
 
 .stat-icon.success {
-    background: rgba(34, 197, 94, 0.1);
-    color: #22c55e;
+    background: rgba(92, 255, 122, 0.08);
+    color: var(--success);
+    border-color: rgba(92, 255, 122, 0.35);
 }
 
 .stat-icon.warning {
-    background: rgba(234, 179, 8, 0.1);
-    color: #eab308;
+    background: rgba(255, 210, 74, 0.08);
+    color: var(--warn);
+    border-color: rgba(255, 210, 74, 0.35);
 }
 
 .stat-label {
-    font-size: 0.875rem;
-    color: var(--text-secondary);
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.5rem;
 }
 
 .stat-value {
-    font-size: 1.875rem;
-    font-weight: 700;
-    color: var(--text-primary);
+    font-size: 2rem;
+    font-weight: 1000;
+    color: var(--text);
+    letter-spacing: -0.02em;
 }
 
 .users-table-container {
-    background: var(--card-bg);
-    border: 1px solid var(--border-color);
-    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.22);
+    border: 1px solid rgba(92, 255, 122, 0.18);
+    border-radius: var(--radius);
     overflow: hidden;
+    box-shadow: var(--shadow-md);
 }
 
 .users-table-header {
     padding: 1.5rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px dashed rgba(92, 255, 122, 0.18);
+    background: linear-gradient(135deg, rgba(92, 255, 122, 0.05) 0%, rgba(92, 255, 122, 0.02) 100%);
 }
 
 .users-table-header h2 {
-    font-size: 1.25rem;
-    margin-bottom: 0.25rem;
-    color: var(--text-primary);
+    font-size: 1.35rem;
+    margin-bottom: 0.35rem;
+    color: var(--primary-2);
+    font-weight: 1000;
 }
 
 .users-table-header p {
     font-size: 0.875rem;
-    color: var(--text-secondary);
+    color: var(--muted);
 }
 
 .users-table {
@@ -106,165 +180,349 @@
 .users-table thead th {
     padding: 1rem 1.5rem;
     text-align: left;
-    font-size: 0.75rem;
-    font-weight: 600;
+    font-size: 0.7rem;
+    font-weight: 900;
     text-transform: uppercase;
-    color: var(--text-secondary);
-    border-bottom: 1px solid var(--border-color);
-    background: var(--hover-bg);
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    border-bottom: 1px solid rgba(92, 255, 122, 0.18);
+    background: rgba(92, 255, 122, 0.04);
 }
 
 .users-table tbody td {
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-primary);
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px dashed rgba(92, 255, 122, 0.12);
+    color: var(--text);
+    transition: all 0.2s ease;
 }
 
 .users-table tbody tr:last-child td {
     border-bottom: none;
 }
 
+.users-table tbody tr {
+    transition: all 0.2s ease;
+}
+
 .users-table tbody tr:hover {
-    background: var(--hover-bg);
+    background: rgba(92, 255, 122, 0.04);
+}
+
+.users-table tbody tr:hover td {
+    color: var(--primary-2);
 }
 
 .user-info {
     display: flex;
     align-items: center;
-    gap: 0.75rem;
+    gap: 0.85rem;
 }
 
 .user-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    background: var(--primary-light);
+    width: 44px;
+    height: 44px;
+    border-radius: 10px;
+    background: rgba(92, 255, 122, 0.08);
     color: var(--primary);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-weight: 600;
+    font-weight: 900;
+    font-size: 1.1rem;
+    border: 1px solid rgba(92, 255, 122, 0.25);
+    transition: all 0.2s ease;
+}
+
+.users-table tbody tr:hover .user-avatar {
+    background: rgba(92, 255, 122, 0.15);
+    border-color: rgba(92, 255, 122, 0.45);
+    transform: scale(1.05);
 }
 
 .user-details {
     display: flex;
     flex-direction: column;
+    gap: 0.25rem;
 }
 
 .user-username {
-    font-weight: 600;
-    color: var(--text-primary);
+    font-weight: 800;
+    color: var(--text);
+    font-size: 0.95rem;
 }
 
 .user-id {
-    font-size: 0.75rem;
-    color: var(--text-secondary);
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-family: 'Fira Code', monospace;
 }
 
 .badge {
     display: inline-flex;
     align-items: center;
-    padding: 0.25rem 0.75rem;
-    border-radius: 6px;
-    font-size: 0.75rem;
-    font-weight: 600;
+    gap: 0.4rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border: 1px solid;
+    transition: all 0.2s ease;
 }
 
 .badge.admin {
-    background: rgba(99, 102, 241, 0.1);
+    background: rgba(92, 255, 122, 0.10);
     color: var(--primary);
+    border-color: rgba(92, 255, 122, 0.35);
+}
+
+.badge.admin:hover {
+    background: rgba(92, 255, 122, 0.15);
+    border-color: rgba(92, 255, 122, 0.55);
 }
 
 .badge.user {
-    background: var(--hover-bg);
-    color: var(--text-secondary);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--muted);
+    border-color: rgba(92, 255, 122, 0.18);
 }
 
 .quota-info {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.6rem;
 }
 
 .quota-text {
-    font-size: 0.875rem;
-    color: var(--text-primary);
+    font-size: 0.85rem;
+    color: var(--text);
+    font-family: 'Fira Code', monospace;
+    font-weight: 600;
 }
 
 .quota-bar-mini {
     width: 100%;
-    height: 4px;
-    background: var(--hover-bg);
-    border-radius: 2px;
+    height: 6px;
+    background: rgba(92, 255, 122, 0.10);
+    border-radius: 999px;
     overflow: hidden;
+    border: 1px solid rgba(92, 255, 122, 0.16);
+    position: relative;
 }
 
 .quota-bar-mini-fill {
     height: 100%;
-    background: var(--primary);
-    transition: width 0.3s ease;
+    background: linear-gradient(90deg, rgba(92, 255, 122, 0.85), rgba(92, 255, 122, 0.95));
+    transition: width 0.4s ease;
+    position: relative;
+}
+
+.quota-bar-mini-fill::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
 }
 
 .action-buttons {
     display: flex;
-    gap: 0.5rem;
+    gap: 0.6rem;
 }
 
 .btn-icon {
-    padding: 0.5rem;
-    border: none;
-    background: var(--hover-bg);
-    color: var(--text-primary);
-    border-radius: 6px;
+    padding: 0.6rem;
+    border: 1px solid rgba(92, 255, 122, 0.22);
+    background: rgba(92, 255, 122, 0.04);
+    color: var(--text);
+    border-radius: 8px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
+    font-size: 0.95rem;
 }
 
 .btn-icon:hover {
-    background: var(--primary);
-    color: white;
+    background: rgba(92, 255, 122, 0.15);
+    border-color: rgba(92, 255, 122, 0.45);
+    color: var(--primary-2);
+    transform: scale(1.05);
+    box-shadow: 0 0 12px rgba(92, 255, 122, 0.2);
+}
+
+.btn-icon:active {
+    transform: scale(0.95);
+}
+
+.btn-icon.danger {
+    border-color: rgba(255, 77, 77, 0.35);
+    background: rgba(255, 77, 77, 0.06);
 }
 
 .btn-icon.danger:hover {
-    background: var(--danger);
-    color: white;
+    background: rgba(255, 77, 77, 0.15);
+    border-color: rgba(255, 77, 77, 0.65);
+    color: #ffd0d0;
+    box-shadow: 0 0 12px rgba(255, 77, 77, 0.2);
+}
+
+.btn-icon:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
 }
 
 .loading-state {
-    padding: 4rem;
+    padding: 5rem 2rem;
     text-align: center;
-    color: var(--text-secondary);
+    color: var(--muted);
+}
+
+.loading-state .spinner {
+    margin-bottom: 1.5rem;
+}
+
+.loading-state p {
+    font-size: 0.95rem;
+    color: var(--muted);
 }
 
 .empty-state-admin {
-    padding: 4rem;
+    padding: 5rem 2rem;
     text-align: center;
 }
 
 .empty-state-admin i {
-    font-size: 4rem;
-    color: var(--text-tertiary);
-    margin-bottom: 1rem;
+    font-size: 4.5rem;
+    color: rgba(92, 255, 122, 0.25);
+    margin-bottom: 1.5rem;
+    display: block;
+}
+
+.empty-state-admin h3 {
+    color: var(--primary-2);
+    font-size: 1.5rem;
+    font-weight: 900;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state-admin p {
+    color: var(--muted);
 }
 
 .back-link {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.6rem;
     color: var(--primary);
     text-decoration: none;
-    font-weight: 500;
+    font-weight: 800;
     margin-bottom: 2rem;
-    transition: opacity 0.2s;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    border: 1px solid rgba(92, 255, 122, 0.18);
+    background: rgba(92, 255, 122, 0.04);
+    transition: all 0.2s ease;
 }
 
 .back-link:hover {
-    opacity: 0.8;
+    background: rgba(92, 255, 122, 0.08);
+    border-color: rgba(92, 255, 122, 0.35);
+    text-decoration: none;
+    transform: translateX(-4px);
+    box-shadow: 0 0 12px rgba(92, 255, 122, 0.15);
+}
+
+/* Number input spinner styling - terminal theme */
+input[type="number"] {
+    -moz-appearance: textfield; /* Firefox */
+}
+
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+    width: 20px;
+    height: 100%;
+    position: absolute;
+    right: 0;
+    top: 0;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+/* Show on hover */
+input[type="number"]:hover::-webkit-inner-spin-button,
+input[type="number"]:hover::-webkit-outer-spin-button {
+    opacity: 1;
+}
+
+/* Custom spinner buttons container */
+.modal input[type="number"] {
+    position: relative;
+    padding-right: 32px;
+}
+
+/* Create custom buttons using background gradient */
+.modal input[type="number"]::-webkit-inner-spin-button {
+    opacity: 1;
+    width: 24px;
+    height: 100%;
+    background: linear-gradient(to bottom, 
+        rgba(92, 255, 122, 0.15) 0%, 
+        rgba(92, 255, 122, 0.15) 50%, 
+        transparent 50%, 
+        transparent 51%,
+        rgba(92, 255, 122, 0.15) 51%,
+        rgba(92, 255, 122, 0.15) 100%);
+    border-left: 1px solid rgba(92, 255, 122, 0.25);
+    position: relative;
+    cursor: pointer;
+}
+
+.modal input[type="number"]::-webkit-inner-spin-button:hover {
+    background: linear-gradient(to bottom, 
+        rgba(92, 255, 122, 0.25) 0%, 
+        rgba(92, 255, 122, 0.25) 50%, 
+        transparent 50%, 
+        transparent 51%,
+        rgba(92, 255, 122, 0.25) 51%,
+        rgba(92, 255, 122, 0.25) 100%);
+    border-left-color: rgba(92, 255, 122, 0.45);
+}
+
+/* Add arrow indicators */
+.modal input[type="number"]::-webkit-inner-spin-button::before,
+.modal input[type="number"]::-webkit-inner-spin-button::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.modal input[type="number"]::-webkit-inner-spin-button::before {
+    top: 25%;
+    border-bottom: 5px solid rgba(92, 255, 122, 0.85);
+}
+
+.modal input[type="number"]::-webkit-inner-spin-button::after {
+    bottom: 25%;
+    border-top: 5px solid rgba(92, 255, 122, 0.85);
 }
 
 @media (max-width: 768px) {
