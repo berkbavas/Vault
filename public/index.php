@@ -114,6 +114,11 @@
     <!-- Auth -->
     <div id="auth-container" class="auth-shell">
         <div class="auth-card">
+            <div class="auth-header">
+                <div class="green-dot"></div>
+                <div class="yellow-dot"></div>
+                <div class="red-dot"></div>
+            </div>
             <div class="auth-brand">
                 <div class="brand-badge" aria-hidden="true"><i class="fa-solid fa-shield-halved"></i></div>
                 <div class="brand-text">
