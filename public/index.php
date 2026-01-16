@@ -20,10 +20,54 @@
 
 <body>
     <!-- Loading Overlay -->
-    <div id="loading-overlay" class="loading-overlay hidden" aria-hidden="true">
-        <div class="loading-card" role="status" aria-live="polite">
-            <div class="spinner" aria-hidden="true"></div>
-            <div id="loading-text" class="loading-text">Loading...</div>
+    <div id="loading-overlay" class="loading-overlay" aria-hidden="true">
+        <div class="loading-card enhanced" role="status" aria-live="polite">
+            <!-- Terminal Header -->
+            <div class="loading-terminal-header">
+                <div class="terminal-dots">
+                    <span class="dot red"></span>
+                    <span class="dot yellow"></span>
+                    <span class="dot green"></span>
+                </div>
+                <span class="terminal-title">vault-drive.exe</span>
+            </div>
+            
+            <!-- Boot Animation -->
+            <div class="loading-boot-sequence">
+                <div class="boot-logo">
+                    <div class="shield-container">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <div class="shield-pulse"></div>
+                        <div class="shield-ring"></div>
+                        <div class="shield-ring delay-1"></div>
+                        <div class="shield-ring delay-2"></div>
+                    </div>
+                </div>
+                
+                <div class="boot-title">VAULT DRIVE</div>
+                <div class="boot-subtitle">Zero-Knowledge Secure Storage</div>
+                
+                <!-- Matrix Effect Container -->
+                <div class="loading-matrix" id="loading-matrix"></div>
+                
+                <!-- Progress Indicator -->
+                <div class="boot-progress">
+                    <div class="boot-progress-track">
+                        <div class="boot-progress-fill" id="boot-progress-fill"></div>
+                        <div class="boot-progress-glow"></div>
+                    </div>
+                </div>
+                
+                <!-- Status Text -->
+                <div class="boot-status">
+                    <span class="status-prefix">&gt;</span>
+                    <span id="loading-text" class="loading-text">Initializing secure environment...</span>
+                    <span class="cursor-blink">_</span>
+                </div>
+                
+                <!-- Boot Log -->
+                <div class="boot-log" id="boot-log"></div>
+            </div>
         </div>
     </div>
 
@@ -45,6 +89,28 @@
                     </button>
                 </div>
                 <div class="progress-body">
+                    <!-- Encryption Animation -->
+                    <div id="upload-crypto-animation" class="crypto-animation encrypting">
+                        <div class="crypto-matrix-bg" id="upload-matrix-bg"></div>
+                        <div class="data-flow"></div>
+                        <div class="data-flow"></div>
+                        <div class="crypto-stream left" id="upload-stream-left">01001010</div>
+                        <div class="crypto-stream right" id="upload-stream-right">10110101</div>
+                        <div class="crypto-icon-wrapper">
+                            <div class="crypto-ring"></div>
+                            <div class="crypto-ring"></div>
+                            <div class="crypto-ring"></div>
+                            <div class="crypto-particle"></div>
+                            <div class="crypto-particle"></div>
+                            <div class="crypto-particle"></div>
+                            <div class="crypto-particle"></div>
+                            <div class="crypto-icon">
+                                <i class="fa-solid fa-lock"></i>
+                            </div>
+                        </div>
+                        <div class="crypto-status" id="upload-crypto-status"></div>
+                    </div>
+
                     <div class="progress-bar-container">
                         <div class="progress-bar-track">
                             <div class="progress-bar-fill" id="upload-progress-bar-fill"></div>
@@ -86,6 +152,28 @@
                     </button>
                 </div>
                 <div class="progress-body">
+                    <!-- Decryption Animation -->
+                    <div id="download-crypto-animation" class="crypto-animation decrypting">
+                        <div class="crypto-matrix-bg" id="download-matrix-bg"></div>
+                        <div class="data-flow"></div>
+                        <div class="data-flow"></div>
+                        <div class="crypto-stream left" id="download-stream-left">10110101</div>
+                        <div class="crypto-stream right" id="download-stream-right">01001010</div>
+                        <div class="crypto-icon-wrapper">
+                            <div class="crypto-ring"></div>
+                            <div class="crypto-ring"></div>
+                            <div class="crypto-ring"></div>
+                            <div class="crypto-particle"></div>
+                            <div class="crypto-particle"></div>
+                            <div class="crypto-particle"></div>
+                            <div class="crypto-particle"></div>
+                            <div class="crypto-icon">
+                                <i class="fa-solid fa-lock-open"></i>
+                            </div>
+                        </div>
+                        <div class="crypto-status" id="download-crypto-status"></div>
+                    </div>
+
                     <div class="progress-bar-container">
                         <div class="progress-bar-track">
                             <div class="progress-bar-fill" id="download-progress-bar-fill"></div>

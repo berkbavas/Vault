@@ -50,21 +50,39 @@ const App = {
      * Initialize the application
      */
     async init() {
-        // Check if user is already logged in
-        const token = sessionStorage.getItem('token');
-        const masterKeyHex = sessionStorage.getItem('masterKey');
+        // Show loading animation on startup
+        showLoading('Initializing secure environment...');
+        
+        try {
+            // Check if user is already logged in
+            const token = sessionStorage.getItem('token');
+            const masterKeyHex = sessionStorage.getItem('masterKey');
 
-        if (token && masterKeyHex) {
+            if (token && masterKeyHex) {
+                updateLoadingText('Restoring encrypted session...');
 
-            this.masterKey = await CryptoUtils.importMasterKey(masterKeyHex);
+                this.masterKey = await CryptoUtils.importMasterKey(masterKeyHex);
 
-            await this.loadUserInfo();
-            await this.loadFiles();
-            await this.loadQuota();
-            this.showApp();
+                updateLoadingText('Loading user data...');
+                await this.loadUserInfo();
+                
+                updateLoadingText('Decrypting file list...');
+                await this.loadFiles();
+                
+                updateLoadingText('Loading quota information...');
+                await this.loadQuota();
+                
+                this.showApp();
+            }
+            
+            this.setupEventListeners();
+            
+            // Hide loading after initialization
+            hideLoading();
+        } catch (error) {
+            console.error('Initialization error:', error);
+            hideLoading();
         }
-
-        this.setupEventListeners();
     },
 
     /**

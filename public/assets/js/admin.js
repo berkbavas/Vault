@@ -3,16 +3,18 @@ let allUsers = [];
 
 // Load users on page load
 document.addEventListener('DOMContentLoaded', async () => {
+    showLoading('Initializing admin console...');
     await loadUsers();
 });
 
 async function loadUsers() {
     try {
-        showLoading('Loading users...');
+        updateLoadingText('Loading user database...');
         const response = await API.admin.listUsers();
 
         if (response.success) {
             allUsers = response.data;
+            updateLoadingText('Rendering user list...');
             renderUsers(allUsers);
             updateStats(allUsers);
         } else {

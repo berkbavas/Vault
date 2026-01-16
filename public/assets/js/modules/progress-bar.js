@@ -3,6 +3,146 @@
  * Handles progress bar display and updates for upload/download operations
  */
 
+// Crypto animation intervals storage
+const cryptoAnimationIntervals = {
+    upload: { matrix: null, stream: null, hex: null },
+    download: { matrix: null, stream: null, hex: null }
+};
+
+/**
+ * Generate random hex string
+ */
+function randomHex(length = 8) {
+    const chars = '0123456789ABCDEF';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+/**
+ * Generate random binary string
+ */
+function randomBinary(length = 8) {
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += Math.random() > 0.5 ? '1' : '0';
+    }
+    return result;
+}
+
+/**
+ * Initialize matrix rain effect
+ */
+function initMatrixRain(type) {
+    const container = document.getElementById(`${type}-matrix-bg`);
+    if (!container) return;
+    
+    // Clear existing
+    container.innerHTML = '';
+    
+    // Create matrix columns
+    const columnCount = 8;
+    for (let i = 0; i < columnCount; i++) {
+        const column = document.createElement('div');
+        column.className = 'matrix-column';
+        column.style.left = `${(i / columnCount) * 100}%`;
+        column.style.animationDelay = `${Math.random() * 2}s`;
+        column.style.animationDuration = `${1.5 + Math.random() * 1.5}s`;
+        column.textContent = randomHex(6);
+        container.appendChild(column);
+    }
+    
+    // Update matrix content periodically
+    cryptoAnimationIntervals[type].matrix = setInterval(() => {
+        const columns = container.querySelectorAll('.matrix-column');
+        columns.forEach(col => {
+            col.textContent = randomHex(6);
+        });
+    }, 500);
+}
+
+/**
+ * Initialize binary stream updates
+ */
+function initBinaryStreams(type) {
+    const leftStream = document.getElementById(`${type}-stream-left`);
+    const rightStream = document.getElementById(`${type}-stream-right`);
+    
+    if (!leftStream || !rightStream) return;
+    
+    cryptoAnimationIntervals[type].stream = setInterval(() => {
+        leftStream.textContent = randomBinary(8);
+        rightStream.textContent = randomBinary(8);
+    }, 200);
+}
+
+/**
+ * Create floating hex characters
+ */
+function createFloatingHex(type) {
+    const animation = document.getElementById(`${type}-crypto-animation`);
+    if (!animation) return;
+    
+    cryptoAnimationIntervals[type].hex = setInterval(() => {
+        const hex = document.createElement('div');
+        hex.className = 'hex-float';
+        hex.textContent = randomHex(2);
+        hex.style.left = `${20 + Math.random() * 60}%`;
+        hex.style.bottom = '20px';
+        hex.style.animationDuration = `${1.5 + Math.random() * 1}s`;
+        animation.appendChild(hex);
+        
+        // Remove after animation
+        setTimeout(() => {
+            hex.remove();
+        }, 2500);
+    }, 300);
+}
+
+/**
+ * Start crypto animation
+ */
+function startCryptoAnimation(type) {
+    const animation = document.getElementById(`${type}-crypto-animation`);
+    if (!animation) return;
+    
+    // Reset state
+    animation.classList.remove('complete');
+    animation.classList.add(type === 'upload' ? 'encrypting' : 'decrypting');
+    
+    // Initialize animations
+    initMatrixRain(type);
+    initBinaryStreams(type);
+    createFloatingHex(type);
+}
+
+/**
+ * Stop crypto animation
+ */
+function stopCryptoAnimation(type) {
+    // Clear all intervals
+    Object.values(cryptoAnimationIntervals[type]).forEach(interval => {
+        if (interval) clearInterval(interval);
+    });
+    cryptoAnimationIntervals[type] = { matrix: null, stream: null, hex: null };
+}
+
+/**
+ * Set crypto animation to complete state
+ */
+function completeCryptoAnimation(type) {
+    stopCryptoAnimation(type);
+    
+    const animation = document.getElementById(`${type}-crypto-animation`);
+    
+    if (animation) {
+        animation.classList.remove('encrypting', 'decrypting');
+        animation.classList.add('complete');
+    }
+}
+
 /**
  * Show progress bar
  * @param {string} type - 'upload' or 'download'
@@ -42,6 +182,9 @@ function showProgress(type, filename, total, currentFile = 1, totalFiles = 1) {
     document.getElementById(`${type}-progress-speed`).textContent = '-- KB/s';
     document.getElementById(`${type}-progress-size`).textContent = `0 / ${formatFileSize(total)}`;
     document.getElementById(`${type}-progress-time`).textContent = 'Calculating...';
+    
+    // Start crypto animation
+    startCryptoAnimation(type);
     
     modal.classList.remove('hidden', 'complete');
 }
@@ -112,6 +255,9 @@ function completeProgress(type) {
     document.getElementById(`${type}-progress-subtitle`).textContent = 'Complete!';
     document.getElementById(`${type}-progress-time`).textContent = 'Done';
     
+    // Complete the crypto animation
+    completeCryptoAnimation(type);
+    
     card.classList.add('complete');
     
     // Hide after 2 seconds
@@ -127,7 +273,18 @@ function completeProgress(type) {
 function hideProgress(type) {
     const modal = document.getElementById(`${type}-progress-modal`);
     const card = modal.querySelector('.progress-card');
+    const cryptoAnimation = document.getElementById(`${type}-crypto-animation`);
     const progressState = type === 'upload' ? App.uploadProgressState : App.downloadProgressState;
+    
+    // Stop crypto animation and clean up
+    stopCryptoAnimation(type);
+    
+    // Reset crypto animation state
+    if (cryptoAnimation) {
+        cryptoAnimation.classList.remove('encrypting', 'decrypting', 'complete');
+        // Clear any floating hex elements
+        cryptoAnimation.querySelectorAll('.hex-float').forEach(el => el.remove());
+    }
     
     modal.classList.add('hidden');
     card.classList.remove('complete');

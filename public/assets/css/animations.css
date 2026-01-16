@@ -170,3 +170,554 @@
         text-shadow: none;
     }
 }
+
+/* ==========================================
+   ENCRYPTION/DECRYPTION ANIMATIONS
+   ========================================== */
+
+/* Encryption Container */
+.crypto-animation {
+    position: relative;
+    width: 100%;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    border: 1px solid rgba(92, 255, 122, 0.15);
+    margin: 8px 0;
+}
+
+/* Matrix Rain Background */
+.crypto-matrix-bg {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    opacity: 0.4;
+}
+
+.matrix-column {
+    position: absolute;
+    top: -20px;
+    font-family: 'Fira Code', monospace;
+    font-size: 10px;
+    color: var(--primary);
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    animation: matrix-rain 2s linear infinite;
+    text-shadow: 0 0 8px rgba(92, 255, 122, 0.8);
+}
+
+@keyframes matrix-rain {
+    0% {
+        transform: translateY(-100%);
+        opacity: 1;
+    }
+    100% {
+        transform: translateY(200%);
+        opacity: 0;
+    }
+}
+
+/* Crypto Icon */
+.crypto-icon-wrapper {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.crypto-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(92, 255, 122, 0.15) 0%, rgba(92, 255, 122, 0.05) 100%);
+    border: 2px solid rgba(92, 255, 122, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-size: 18px;
+    position: relative;
+    box-shadow: 
+        0 0 20px rgba(92, 255, 122, 0.3),
+        inset 0 0 15px rgba(92, 255, 122, 0.1);
+}
+
+/* Encrypting State */
+.crypto-animation.encrypting .crypto-icon {
+    animation: crypto-pulse 0.8s ease-in-out infinite, crypto-glow 1.5s ease-in-out infinite;
+}
+
+.crypto-animation.encrypting .crypto-icon i {
+    animation: lock-shake 0.3s ease-in-out infinite;
+}
+
+@keyframes crypto-pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.1);
+    }
+}
+
+@keyframes crypto-glow {
+    0%, 100% {
+        box-shadow: 
+            0 0 20px rgba(92, 255, 122, 0.3),
+            0 0 40px rgba(92, 255, 122, 0.2),
+            inset 0 0 15px rgba(92, 255, 122, 0.1);
+    }
+    50% {
+        box-shadow: 
+            0 0 30px rgba(92, 255, 122, 0.5),
+            0 0 60px rgba(92, 255, 122, 0.3),
+            0 0 90px rgba(92, 255, 122, 0.2),
+            inset 0 0 20px rgba(92, 255, 122, 0.2);
+    }
+}
+
+@keyframes lock-shake {
+    0%, 100% {
+        transform: rotate(-3deg);
+    }
+    50% {
+        transform: rotate(3deg);
+    }
+}
+
+/* Decrypting State */
+.crypto-animation.decrypting .crypto-icon {
+    animation: crypto-pulse 0.8s ease-in-out infinite, decrypt-glow 1.5s ease-in-out infinite;
+}
+
+.crypto-animation.decrypting .crypto-icon i {
+    animation: unlock-bounce 0.5s ease-in-out infinite;
+}
+
+@keyframes decrypt-glow {
+    0%, 100% {
+        box-shadow: 
+            0 0 20px rgba(100, 200, 255, 0.3),
+            0 0 40px rgba(100, 200, 255, 0.2),
+            inset 0 0 15px rgba(100, 200, 255, 0.1);
+        border-color: rgba(100, 200, 255, 0.4);
+    }
+    50% {
+        box-shadow: 
+            0 0 30px rgba(100, 200, 255, 0.5),
+            0 0 60px rgba(100, 200, 255, 0.3),
+            0 0 90px rgba(100, 200, 255, 0.2),
+            inset 0 0 20px rgba(100, 200, 255, 0.2);
+        border-color: rgba(100, 200, 255, 0.6);
+    }
+}
+
+@keyframes unlock-bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-2px);
+    }
+}
+
+/* Orbiting Rings */
+.crypto-ring {
+    position: absolute;
+    border: 1px dashed rgba(92, 255, 122, 0.3);
+    border-radius: 50%;
+    animation: orbit 3s linear infinite;
+}
+
+.crypto-ring:nth-child(1) {
+    width: 60px;
+    height: 60px;
+    animation-duration: 3s;
+}
+
+.crypto-ring:nth-child(2) {
+    width: 80px;
+    height: 80px;
+    animation-duration: 4s;
+    animation-direction: reverse;
+    border-color: rgba(92, 255, 122, 0.2);
+}
+
+.crypto-ring:nth-child(3) {
+    width: 100px;
+    height: 100px;
+    animation-duration: 5s;
+    border-color: rgba(92, 255, 122, 0.15);
+}
+
+@keyframes orbit {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Orbiting Particles */
+.crypto-particle {
+    position: absolute;
+    width: 4px;
+    height: 4px;
+    background: var(--primary);
+    border-radius: 50%;
+    box-shadow: 0 0 6px rgba(92, 255, 122, 0.8), 0 0 12px rgba(92, 255, 122, 0.5);
+}
+
+.crypto-particle:nth-child(1) {
+    animation: orbit-particle-1 2s linear infinite;
+}
+
+.crypto-particle:nth-child(2) {
+    animation: orbit-particle-2 2.5s linear infinite;
+    animation-delay: -0.5s;
+}
+
+.crypto-particle:nth-child(3) {
+    animation: orbit-particle-3 3s linear infinite;
+    animation-delay: -1s;
+}
+
+.crypto-particle:nth-child(4) {
+    animation: orbit-particle-4 3.5s linear infinite;
+    animation-delay: -1.5s;
+}
+
+@keyframes orbit-particle-1 {
+    0% { transform: rotate(0deg) translateX(30px) rotate(0deg); }
+    100% { transform: rotate(360deg) translateX(30px) rotate(-360deg); }
+}
+
+@keyframes orbit-particle-2 {
+    0% { transform: rotate(0deg) translateX(40px) rotate(0deg); }
+    100% { transform: rotate(-360deg) translateX(40px) rotate(360deg); }
+}
+
+@keyframes orbit-particle-3 {
+    0% { transform: rotate(0deg) translateX(50px) rotate(0deg); }
+    100% { transform: rotate(360deg) translateX(50px) rotate(-360deg); }
+}
+
+@keyframes orbit-particle-4 {
+    0% { transform: rotate(0deg) translateX(35px) rotate(0deg); }
+    100% { transform: rotate(-360deg) translateX(35px) rotate(360deg); }
+}
+
+/* Binary Stream */
+.crypto-stream {
+    position: absolute;
+    display: flex;
+    gap: 2px;
+    font-family: 'Fira Code', monospace;
+    font-size: 9px;
+    color: var(--primary);
+    opacity: 0.6;
+    white-space: nowrap;
+}
+
+.crypto-stream.left {
+    left: 10px;
+    animation: stream-left 2s linear infinite;
+}
+
+.crypto-stream.right {
+    right: 10px;
+    animation: stream-right 2s linear infinite;
+}
+
+@keyframes stream-left {
+    0% {
+        transform: translateX(-50px);
+        opacity: 0;
+    }
+    20% {
+        opacity: 0.8;
+    }
+    80% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateX(30px);
+        opacity: 0;
+    }
+}
+
+@keyframes stream-right {
+    0% {
+        transform: translateX(50px);
+        opacity: 0;
+    }
+    20% {
+        opacity: 0.8;
+    }
+    80% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateX(-30px);
+        opacity: 0;
+    }
+}
+
+/* Crypto Status Text */
+.crypto-status {
+    position: absolute;
+    bottom: 4px;
+    font-family: 'Fira Code', monospace;
+    font-size: 8px;
+    color: var(--primary);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    opacity: 0.7;
+    animation: status-blink 1s ease-in-out infinite;
+}
+
+@keyframes status-blink {
+    0%, 100% {
+        opacity: 0.7;
+    }
+    50% {
+        opacity: 1;
+        text-shadow: 0 0 8px rgba(92, 255, 122, 0.8);
+    }
+}
+
+/* Data Flow Animation */
+.data-flow {
+    position: absolute;
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(90deg, 
+        transparent, 
+        var(--primary), 
+        transparent);
+    opacity: 0;
+}
+
+.crypto-animation.encrypting .data-flow,
+.crypto-animation.decrypting .data-flow {
+    animation: data-stream 1s linear infinite;
+}
+
+.data-flow:nth-child(1) {
+    top: 15px;
+    animation-delay: 0s;
+}
+
+.data-flow:nth-child(2) {
+    bottom: 15px;
+    animation-delay: 0.5s;
+}
+
+@keyframes data-stream {
+    0% {
+        transform: translateX(-100%);
+        opacity: 0;
+    }
+    20% {
+        opacity: 0.8;
+    }
+    80% {
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Hex Characters Floating */
+.hex-float {
+    position: absolute;
+    font-family: 'Fira Code', monospace;
+    font-size: 10px;
+    color: var(--primary);
+    opacity: 0;
+    animation: hex-rise 2s ease-out infinite;
+}
+
+@keyframes hex-rise {
+    0% {
+        transform: translateY(0) scale(1);
+        opacity: 0;
+    }
+    10% {
+        opacity: 0.8;
+    }
+    90% {
+        opacity: 0.3;
+    }
+    100% {
+        transform: translateY(-40px) scale(0.5);
+        opacity: 0;
+    }
+}
+
+/* Completion Animation */
+.crypto-animation.complete .crypto-icon {
+    animation: crypto-complete 0.6s ease-out forwards;
+    background: linear-gradient(135deg, rgba(92, 255, 122, 0.3) 0%, rgba(92, 255, 122, 0.1) 100%);
+}
+
+@keyframes crypto-complete {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.3);
+        box-shadow: 
+            0 0 40px rgba(92, 255, 122, 0.6),
+            0 0 80px rgba(92, 255, 122, 0.4),
+            0 0 120px rgba(92, 255, 122, 0.2);
+    }
+    100% {
+        transform: scale(1);
+        box-shadow: 
+            0 0 25px rgba(92, 255, 122, 0.4),
+            0 0 50px rgba(92, 255, 122, 0.2);
+    }
+}
+
+/* Shield Pulse on Complete */
+.crypto-animation.complete .crypto-icon i {
+    animation: shield-pulse 0.6s ease-out forwards;
+}
+
+@keyframes shield-pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.2);
+    }
+}
+
+/* Progress Card Crypto Enhancement */
+.progress-card .crypto-animation {
+    margin: 0 0 12px 0;
+}
+
+/* Decryption uses same green theme as encryption */
+.crypto-animation.decrypting .crypto-icon {
+    color: var(--primary);
+}
+
+.crypto-animation.decrypting .crypto-ring {
+    border-color: rgba(92, 255, 122, 0.3);
+}
+
+.crypto-animation.decrypting .crypto-particle {
+    background: var(--primary);
+    box-shadow: 0 0 6px rgba(92, 255, 122, 0.8), 0 0 12px rgba(92, 255, 122, 0.5);
+}
+
+.crypto-animation.decrypting .crypto-stream,
+.crypto-animation.decrypting .crypto-status,
+.crypto-animation.decrypting .matrix-column {
+    color: var(--primary);
+    text-shadow: 0 0 8px rgba(92, 255, 122, 0.8);
+}
+
+.crypto-animation.decrypting .data-flow {
+    background: linear-gradient(90deg, 
+        transparent, 
+        var(--primary), 
+        transparent);
+}
+
+.crypto-animation.decrypting {
+    border-color: rgba(92, 255, 122, 0.15);
+}
+
+/* Decrypting glow uses green instead of blue */
+@keyframes decrypt-glow {
+    0%, 100% {
+        box-shadow: 
+            0 0 20px rgba(92, 255, 122, 0.3),
+            0 0 40px rgba(92, 255, 122, 0.2),
+            inset 0 0 15px rgba(92, 255, 122, 0.1);
+        border-color: rgba(92, 255, 122, 0.4);
+    }
+    50% {
+        box-shadow: 
+            0 0 30px rgba(92, 255, 122, 0.5),
+            0 0 60px rgba(92, 255, 122, 0.3),
+            0 0 90px rgba(92, 255, 122, 0.2),
+            inset 0 0 20px rgba(92, 255, 122, 0.2);
+        border-color: rgba(92, 255, 122, 0.6);
+    }
+}
+
+/* ==========================================
+   RESPONSIVE CRYPTO ANIMATION
+   ========================================== */
+
+@media (max-width: 480px) {
+    .crypto-animation {
+        height: 50px;
+    }
+    
+    .crypto-icon {
+        width: 36px;
+        height: 36px;
+        font-size: 14px;
+    }
+    
+    .crypto-ring:nth-child(1) {
+        width: 48px;
+        height: 48px;
+    }
+    
+    .crypto-ring:nth-child(2) {
+        width: 64px;
+        height: 64px;
+    }
+    
+    .crypto-ring:nth-child(3) {
+        width: 80px;
+        height: 80px;
+    }
+    
+    @keyframes orbit-particle-1 {
+        0% { transform: rotate(0deg) translateX(24px) rotate(0deg); }
+        100% { transform: rotate(360deg) translateX(24px) rotate(-360deg); }
+    }
+    
+    @keyframes orbit-particle-2 {
+        0% { transform: rotate(0deg) translateX(32px) rotate(0deg); }
+        100% { transform: rotate(-360deg) translateX(32px) rotate(360deg); }
+    }
+    
+    @keyframes orbit-particle-3 {
+        0% { transform: rotate(0deg) translateX(40px) rotate(0deg); }
+        100% { transform: rotate(360deg) translateX(40px) rotate(-360deg); }
+    }
+    
+    @keyframes orbit-particle-4 {
+        0% { transform: rotate(0deg) translateX(28px) rotate(0deg); }
+        100% { transform: rotate(-360deg) translateX(28px) rotate(360deg); }
+    }
+    
+    .crypto-stream {
+        font-size: 7px;
+    }
+    
+    .crypto-status {
+        font-size: 7px;
+        letter-spacing: 1px;
+    }
+    
+    .matrix-column {
+        font-size: 8px;
+    }
+}

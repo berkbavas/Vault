@@ -3,17 +3,194 @@
  * Utility functions for UI operations like loading, toasts, formatting, etc.
  */
 
-function showLoading(text = 'Loading...') {
-    document.getElementById('loading-overlay').classList.remove('hidden');
-    document.getElementById('loading-text').textContent = text;
+// Loading state management
+const LoadingManager = {
+    matrixInterval: null,
+    progressInterval: null,
+    logIndex: 0,
+    bootLogs: [
+        { text: '[SYS] Initializing secure environment...', type: 'normal' },
+        { text: '[OK] Cryptographic modules loaded', type: 'success' },
+        { text: '[SYS] Establishing encrypted connection...', type: 'normal' },
+        { text: '[OK] TLS handshake complete', type: 'success' },
+        { text: '[SYS] Loading user interface...', type: 'normal' },
+        { text: '[OK] Components initialized', type: 'success' },
+        { text: '[SYS] Verifying session integrity...', type: 'normal' },
+        { text: '[OK] Session validated', type: 'success' }
+    ],
+
+    /**
+     * Initialize matrix rain effect
+     */
+    initMatrixEffect() {
+        const container = document.getElementById('loading-matrix');
+        if (!container) return;
+
+        const chars = '0123456789ABCDEF@#$%&*<>/\\|{}[]';
+        const columns = 15;
+
+        for (let i = 0; i < columns; i++) {
+            const char = document.createElement('div');
+            char.className = 'matrix-char';
+            char.textContent = chars.charAt(Math.floor(Math.random() * chars.length));
+            char.style.left = `${(i / columns) * 100}%`;
+            char.style.animationDuration = `${1 + Math.random() * 2}s`;
+            char.style.animationDelay = `${Math.random() * 2}s`;
+            container.appendChild(char);
+        }
+
+        // Update characters periodically
+        this.matrixInterval = setInterval(() => {
+            const matrixChars = container.querySelectorAll('.matrix-char');
+            matrixChars.forEach(char => {
+                if (Math.random() > 0.7) {
+                    char.textContent = chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+            });
+        }, 100);
+    },
+
+    /**
+     * Start progress animation
+     */
+    startProgress() {
+        const fill = document.getElementById('boot-progress-fill');
+        if (!fill) return;
+
+        let progress = 0;
+        this.progressInterval = setInterval(() => {
+            // Simulate varying load speed
+            const increment = Math.random() * 8 + 2;
+            progress = Math.min(progress + increment, 95);
+            fill.style.width = `${progress}%`;
+        }, 150);
+    },
+
+    /**
+     * Complete progress animation
+     */
+    completeProgress() {
+        const fill = document.getElementById('boot-progress-fill');
+        if (fill) {
+            fill.style.width = '100%';
+        }
+    },
+
+    /**
+     * Add boot log entry
+     */
+    addBootLog(text, type = 'normal') {
+        const logContainer = document.getElementById('boot-log');
+        if (!logContainer) return;
+
+        const line = document.createElement('div');
+        line.className = 'boot-log-line';
+        
+        if (type === 'success') {
+            line.innerHTML = `<span class="success">${text}</span>`;
+        } else if (type === 'warn') {
+            line.innerHTML = `<span class="warn">${text}</span>`;
+        } else {
+            line.textContent = text;
+        }
+        
+        logContainer.appendChild(line);
+
+        // Keep only last 4 lines visible
+        const lines = logContainer.querySelectorAll('.boot-log-line');
+        if (lines.length > 4) {
+            lines[0].remove();
+        }
+    },
+
+    /**
+     * Run boot sequence animation
+     */
+    runBootSequence() {
+        this.logIndex = 0;
+        const addNextLog = () => {
+            if (this.logIndex < this.bootLogs.length) {
+                const log = this.bootLogs[this.logIndex];
+                this.addBootLog(log.text, log.type);
+                this.logIndex++;
+            }
+        };
+
+        // Add logs progressively
+        const logInterval = setInterval(() => {
+            addNextLog();
+            if (this.logIndex >= this.bootLogs.length) {
+                clearInterval(logInterval);
+            }
+        }, 400);
+    },
+
+    /**
+     * Clean up intervals
+     */
+    cleanup() {
+        if (this.matrixInterval) {
+            clearInterval(this.matrixInterval);
+            this.matrixInterval = null;
+        }
+        if (this.progressInterval) {
+            clearInterval(this.progressInterval);
+            this.progressInterval = null;
+        }
+    }
+};
+
+function showLoading(text = 'Initializing secure environment...') {
+    const overlay = document.getElementById('loading-overlay');
+    const loadingText = document.getElementById('loading-text');
+    const bootLog = document.getElementById('boot-log');
+    const progressFill = document.getElementById('boot-progress-fill');
+
+    // Reset state
+    if (bootLog) bootLog.innerHTML = '';
+    if (progressFill) progressFill.style.width = '0%';
+
+    overlay.classList.remove('hidden', 'fade-out');
+    if (loadingText) loadingText.textContent = text;
+
+    // Start animations
+    LoadingManager.initMatrixEffect();
+    LoadingManager.startProgress();
+    LoadingManager.runBootSequence();
 }
 
 function hideLoading() {
-    document.getElementById('loading-overlay').classList.add('hidden');
+    const overlay = document.getElementById('loading-overlay');
+    
+    // Complete progress first
+    LoadingManager.completeProgress();
+
+    // Update final status
+    const loadingText = document.getElementById('loading-text');
+    if (loadingText) loadingText.textContent = 'Ready!';
+
+    // Add final log
+    LoadingManager.addBootLog('[OK] System ready', 'success');
+
+    // Fade out after a brief moment
+    setTimeout(() => {
+        overlay.classList.add('fade-out');
+        
+        // Cleanup and hide after transition
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+            LoadingManager.cleanup();
+            
+            // Clear matrix container
+            const matrixContainer = document.getElementById('loading-matrix');
+            if (matrixContainer) matrixContainer.innerHTML = '';
+        }, 500);
+    }, 300);
 }
 
 function updateLoadingText(text) {
-    document.getElementById('loading-text').textContent = text;
+    const loadingText = document.getElementById('loading-text');
+    if (loadingText) loadingText.textContent = text;
 }
 
 function showToast(message, type = 'info') {
