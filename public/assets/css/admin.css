@@ -286,7 +286,7 @@
     height: 100%;
     border-radius: var(--radius-full);
     transition: width var(--transition-normal);
-    background: linear-gradient(90deg, var(--primary), var(--info));
+    background: linear-gradient(90deg, #1E4284 0%, #2878D0 100%);
 }
 
 .storage-bar-fill.warning {
