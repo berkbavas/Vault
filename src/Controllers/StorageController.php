@@ -101,7 +101,7 @@ class StorageController extends Controller
     {
         try {
             $userId = $this->requireAuth();
-            
+
             $this->validateJson([
                 'id' => 'required|integer',
                 'new_parent_id' => 'nullable|integer',
@@ -216,7 +216,7 @@ class StorageController extends Controller
 
             // Check if Range header is present (for resumable downloads)
             $rangeHeader = isset($_SERVER['HTTP_RANGE']) ? $_SERVER['HTTP_RANGE'] : null;
-            
+
             $start = 0;
             $end = $fileSize - 1;
             $isRangeRequest = false;
@@ -274,24 +274,24 @@ class StorageController extends Controller
             // Stream file in chunks (8MB chunks to save memory)
             $chunkSize = 8 * 1024 * 1024; // 8MB chunks
             $bytesRemaining = $contentLength;
-            
+
             while (!feof($handle) && $bytesRemaining > 0) {
                 $readSize = min($chunkSize, $bytesRemaining);
                 $chunk = fread($handle, $readSize);
-                
+
                 if ($chunk === false) {
                     break;
                 }
-                
+
                 echo $chunk;
                 $bytesRemaining -= strlen($chunk);
-                
+
                 // Flush output buffers to send data immediately
                 if (ob_get_level()) {
                     ob_flush();
                 }
                 flush();
-                
+
                 // Check if client disconnected
                 if (connection_status() != CONNECTION_NORMAL) {
                     break;
@@ -371,6 +371,36 @@ class StorageController extends Controller
             return $this->success([
                 'file' => $fileData
             ], 'File uploaded successfully')->send();
+        } catch (Exception $e) {
+            return $this->error($e->getMessage(), 500)->send();
+        }
+    }
+
+    public function share()
+    {
+        try {
+            $userId = $this->requireAuth();
+
+            $this->validateJson([
+                'file_id' => 'required|integer',
+                'encrypted_key' => 'required|string'
+            ]);
+
+            $fileId = $this->request->json('file_id');
+            $encryptedKey = $this->request->json('encrypted_key');
+            $expiresAt = $this->request->json('expires_at', null);
+
+            $file = $this->storageService->getFileById($fileId, $userId);
+
+            if ($file === null) {
+                return $this->error('File not found or access denied', 404)->send();
+            }
+
+            $token = $this->storageService->createShare($fileId, $encryptedKey, $expiresAt);
+
+            return $this->success([
+                'token' => $token
+            ], 'File shared successfully')->send();
         } catch (Exception $e) {
             return $this->error($e->getMessage(), 500)->send();
         }

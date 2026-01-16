@@ -16,6 +16,7 @@
 
     <link rel="stylesheet" href="./assets/css/style.css?v=<?php echo filemtime('./assets/css/style.css') ?>" />
     <link rel="stylesheet" href="./assets/css/admin.css?v=<?php echo filemtime('./assets/css/admin.css') ?>" />
+    <link rel="stylesheet" href="./assets/css/animations.css?v=<?php echo filemtime('./assets/css/animations.css') ?>" />
 </head>
 
 <body>
@@ -33,7 +34,7 @@
             Back to Vault Drive
         </a>
 
-        <div class="admin-header">
+        <div class="admin-header scan-effect">
             <h1><i class="fa-solid fa-shield-halved"></i> Admin Panel</h1>
             <p>Manage users, quotas, and system settings</p>
         </div>

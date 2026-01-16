@@ -15,6 +15,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
     <link rel="stylesheet" href="./assets/css/style.css?v=<?php echo filemtime('./assets/css/style.css') ?>" />
+    <link rel="stylesheet" href="./assets/css/animations.css?v=<?php echo filemtime('./assets/css/animations.css') ?>" />
 </head>
 
 <body>
@@ -228,11 +229,11 @@
                     </div>
                 </div>
 
-                <div class="user-card">
+                <div class="user-card scan-effect">
                     <div class="user-avatar" aria-hidden="true"><i class="fa-regular fa-user"></i></div>
                     <div class="user-meta">
                         <div class="user-name" id="username-display"></div>
-                        <div class="user-sub">Encrypted session</div>
+                        <div class="user-sub blink-matrix">Encrypted session</div>
                     </div>
                 </div>
 

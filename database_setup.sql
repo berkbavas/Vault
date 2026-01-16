@@ -45,6 +45,16 @@ CREATE TABLE IF NOT EXISTS files (
     FOREIGN KEY (parent_id) REFERENCES files(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS file_shares (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    file_id INT NOT NULL,
+    token VARCHAR(100) UNIQUE NOT NULL, -- Share token
+    encrypted_key VARCHAR(200) NOT NULL, -- Client-encrypted file key (IV + ciphertext + tag in hex)
+    expires_at TIMESTAMP DEFAULT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,
+);
+
 -- Add indexes for better performance
 CREATE INDEX idx_user_id ON files(user_id);
 CREATE INDEX idx_parent_id ON files(parent_id);

@@ -228,7 +228,7 @@ class StorageService
                     $deletedCount++;
                 }
             } catch (Exception $e) {
-    
+
                 continue;
             }
         }
@@ -462,5 +462,34 @@ class StorageService
             }
         }
         rmdir($dir);
+    }
+
+
+    public function generateShareToken($length = 32)
+    {
+        return bin2hex(random_bytes($length));
+    }
+
+
+    public function getFileById($fileId, $userId)
+    {
+        $stmt = $this->pdo->prepare("SELECT * FROM files WHERE id = ? and user_id =  ?");
+        $stmt->execute([$fileId, $userId]);
+        $file = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $file;
+    }
+
+    public function createShare($fileId, $encryptedKey, $expiresAt = null)
+    {
+        $token = $this->generateShareToken(16);
+
+        $stmt = $this->pdo->prepare("
+            INSERT INTO file_shares (file_id, token, encrypted_key, expires_at) 
+            VALUES (?, ?, ?, ?)
+        ");
+        
+        $stmt->execute([$fileId, $token, $encryptedKey, $expiresAt]);
+
+        return $token;
     }
 }

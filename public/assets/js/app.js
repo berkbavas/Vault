@@ -55,9 +55,9 @@ const App = {
         const masterKeyHex = sessionStorage.getItem('masterKey');
 
         if (token && masterKeyHex) {
-            API.setToken(token);
+
             this.masterKey = await CryptoUtils.importMasterKey(masterKeyHex);
-            
+
             await this.loadUserInfo();
             await this.loadFiles();
             await this.loadQuota();
@@ -167,10 +167,11 @@ const App = {
         try {
             showLoading('Logging in...');
             const { masterKey, user } = await AuthModule.handleLogin(username, password);
-            
+
             this.masterKey = masterKey;
             this.currentUser = user;
-            
+
+            await this.loadUserInfo();
             await this.loadFiles();
             await this.loadQuota();
             this.showApp();
@@ -194,7 +195,7 @@ const App = {
         try {
             showLoading('Creating account...');
             await AuthModule.handleRegister(username, password, confirmPassword);
-            
+
             this.showLoginForm();
             hideLoading();
             showToast('Registration successful! Please log in.', 'success');
@@ -212,7 +213,7 @@ const App = {
         try {
             this.currentUser = await AuthModule.loadUserInfo();
             document.getElementById('username-display').textContent = this.currentUser.username;
-            
+
             // Show admin panel button if user is admin
             if (this.currentUser.is_admin == 1) {
                 document.getElementById('admin-panel-btn')?.classList.remove('hidden');
@@ -373,7 +374,7 @@ const App = {
 
             this.selectedItems.clear();
             this.updateBulkActions();
-            
+
             showToast(`${fileIds.length} item(s) deleted successfully!`, 'success');
             await this.loadFiles(this.currentFolderId);
             await this.loadQuota();
@@ -391,7 +392,7 @@ const App = {
     async loadFiles(folderId = null) {
         try {
             const response = await API.files.list(folderId);
-            
+
             if (response.success) {
                 this.files = response.data.files;
                 this.selectedItems.clear();
@@ -428,10 +429,10 @@ const App = {
         for (const file of this.files) {
             try {
                 const displayName = await CryptoUtils.decryptFilename(file.encrypted_name, this.masterKey);
-                
+
                 // Render desktop row
                 this.renderDesktopRow(file, displayName, tbody);
-                
+
                 // Render mobile card
                 this.renderMobileCard(file, displayName, cardsContainer);
             } catch (error) {
@@ -650,7 +651,7 @@ const App = {
         if (folderObj) {
             this.currentFolder = folderObj;
         }
-        
+
         this.folderHistory.push({ id: folderId, name: folderName });
         this.currentFolderId = folderId;
         await this.loadFiles(folderId);
@@ -673,7 +674,7 @@ const App = {
         this.folderHistory = this.folderHistory.slice(0, index + 1);
         const folder = this.folderHistory[index];
         this.currentFolderId = folder.id;
-        
+
         if (index === 0) {
             const response = await API.files.list(null);
             if (response.success) {
@@ -692,7 +693,7 @@ const App = {
                 }
             }
         }
-        
+
         await this.loadFiles(folder.id);
     },
 
@@ -736,7 +737,7 @@ const App = {
         try {
             showLoading(`Preparing download for ${filename}...`);
             hideLoading();
-            
+
             await FileOperations.downloadFile(fileId, filename, this.masterKey);
             showToast(`${filename} downloaded successfully!`, 'success');
         } catch (error) {
@@ -758,7 +759,7 @@ const App = {
         try {
             showLoading(`Deleting ${filename}...`);
             await FileOperations.deleteFile(fileId, filename);
-            
+
             showToast(`${filename} deleted successfully!`, 'success');
             await this.loadFiles(this.currentFolderId);
             await this.loadQuota();
@@ -859,7 +860,7 @@ const App = {
     async loadFolderTree() {
         try {
             showLoading('Loading folders...');
-            
+
             const response = await API.files.list(this.currentFolderId);
             if (!response.success) {
                 throw new Error('Failed to load folders');
@@ -888,7 +889,7 @@ const App = {
                 `;
 
                 if (!item.disabled) {
-                    div.onclick = function() {
+                    div.onclick = function () {
                         App.selectMoveDestination(this);
                     };
                 }
@@ -928,7 +929,7 @@ const App = {
 
         try {
             showLoading('Moving...');
-            
+
             const item = this.files.find(f => f.id === this.selectedFileForMove);
             await FolderOperations.moveFile(
                 this.selectedFileForMove,
@@ -979,12 +980,12 @@ const App = {
 
             closeChangePasswordModal();
             showToast('Password changed successfully! Please log in again.', 'success');
-            
+
             // Log out user
             setTimeout(() => {
                 this.logout();
             }, 2000);
-            
+
             hideLoading();
         } catch (error) {
             console.error('Password change error:', error);
@@ -999,7 +1000,7 @@ const App = {
     cancelProgress(type) {
         const progressState = type === 'upload' ? this.uploadProgressState : this.downloadProgressState;
         const operationType = type === 'upload' ? 'upload' : 'download';
-        
+
         if (confirm(`Are you sure you want to cancel this ${operationType}?`)) {
             progressState.cancelled = true;
             showToast(`${operationType.charAt(0).toUpperCase() + operationType.slice(1)} cancelled`, 'info');

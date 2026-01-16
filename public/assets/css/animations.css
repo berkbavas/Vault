@@ -1,0 +1,172 @@
+/* Hacker Blink Animation */
+@keyframes hacker-blink {
+    0%, 100% {
+        opacity: 1;
+        text-shadow:
+            0 0 4px rgba(92, 255, 122, 0.8),
+            0 0 8px rgba(92, 255, 122, 0.6),
+            0 0 16px rgba(92, 255, 122, 0.4);
+    }
+
+    50% {
+        opacity: 0.3;
+        text-shadow: none;
+    }
+}
+
+@keyframes terminal-cursor {
+    0%, 49% {
+        opacity: 1;
+        background: var(--primary);
+        box-shadow: 0 0 8px rgba(92, 255, 122, 0.8);
+    }
+
+    50%, 100% {
+        opacity: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+}
+
+@keyframes glitch-blink {
+    0%, 100% {
+        opacity: 1;
+        transform: translateX(0);
+        filter: hue-rotate(0deg);
+    }
+
+    10% {
+        opacity: 0.8;
+        transform: translateX(-2px);
+        filter: hue-rotate(90deg);
+    }
+
+    20% {
+        opacity: 1;
+        transform: translateX(2px);
+        filter: hue-rotate(0deg);
+    }
+
+    30% {
+        opacity: 0.6;
+        transform: translateX(0);
+    }
+
+    40%, 60% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    70% {
+        opacity: 0.4;
+        transform: translateX(1px);
+        filter: hue-rotate(-90deg);
+    }
+
+    80% {
+        opacity: 1;
+        transform: translateX(-1px);
+        filter: hue-rotate(0deg);
+    }
+
+    90% {
+        opacity: 0.9;
+        transform: translateX(0);
+    }
+}
+
+@keyframes scan-line {
+    0% {
+        top: -100%;
+    }
+
+    100% {
+        top: 100%;
+    }
+}
+
+.blink {
+    animation: hacker-blink 1s infinite;
+}
+
+.blink-cursor {
+    display: inline-block;
+    width: 10px;
+    height: 1.2em;
+    background: var(--primary);
+    margin-left: 4px;
+    vertical-align: middle;
+    animation: terminal-cursor 0.8s infinite;
+}
+
+.blink-glitch {
+    animation: glitch-blink 2s infinite;
+    position: relative;
+}
+
+.blink-glitch::before,
+.blink-glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0.8;
+}
+
+.blink-glitch::before {
+    animation: glitch-blink 2s infinite;
+    color: #ff00ff;
+    clip-path: polygon(0 0, 100% 0, 100% 35%, 0 35%);
+    transform: translateX(-2px);
+}
+
+.blink-glitch::after {
+    animation: glitch-blink 2s infinite reverse;
+    color: #00ffff;
+    clip-path: polygon(0 65%, 100% 65%, 100% 100%, 0 100%);
+    transform: translateX(2px);
+}
+
+.blink-matrix {
+    animation: matrix-flicker 3s infinite;
+    color: var(--primary);
+}
+
+.scan-effect {
+    position: relative;
+    overflow: hidden;
+}
+
+.scan-effect::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(to bottom,
+            transparent,
+            rgba(92, 255, 122, 0.4),
+            rgba(92, 255, 122, 0.8),
+            rgba(92, 255, 122, 0.4),
+            transparent);
+    animation: scan-line 3s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes matrix-flicker {
+    0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% {
+        opacity: 1;
+        text-shadow:
+            0 0 4px rgba(92, 255, 122, 0.9),
+            0 0 12px rgba(92, 255, 122, 0.7),
+            0 0 20px rgba(92, 255, 122, 0.5),
+            0 0 40px rgba(92, 255, 122, 0.3);
+    }
+
+    20%, 24%, 55% {
+        opacity: 0.6;
+        text-shadow: none;
+    }
+}
