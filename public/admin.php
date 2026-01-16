@@ -105,6 +105,11 @@
                 </table>
             </div>
 
+            <!-- Mobile Cards View -->
+            <div id="users-cards-container">
+                <!-- User cards will be loaded here for mobile -->
+            </div>
+
             <div id="empty-state" class="empty-state-admin" style="display: none;">
                 <i class="fa-regular fa-users"></i>
                 <h3>No users found</h3>

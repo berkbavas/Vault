@@ -28,6 +28,7 @@ async function loadUsers() {
 
 function renderUsers(users) {
     const tableBody = document.getElementById('users-table-body');
+    const cardsContainer = document.getElementById('users-cards-container');
     const loadingState = document.getElementById('loading-state');
     const tableWrapper = document.getElementById('users-table-wrapper');
     const emptyState = document.getElementById('empty-state');
@@ -36,6 +37,7 @@ function renderUsers(users) {
 
     if (users.length === 0) {
         tableWrapper.style.display = 'none';
+        if (cardsContainer) cardsContainer.style.display = 'none';
         emptyState.style.display = 'block';
         return;
     }
@@ -43,6 +45,7 @@ function renderUsers(users) {
     tableWrapper.style.display = 'block';
     emptyState.style.display = 'none';
 
+    // Render table view
     tableBody.innerHTML = users.map(user => {
         const usedMB = (user.storage_used / (1024 * 1024)).toFixed(2);
         const quotaMB = (user.storage_quota / (1024 * 1024)).toFixed(2);
@@ -90,6 +93,62 @@ function renderUsers(users) {
                     </tr>
                 `;
     }).join('');
+
+    // Render cards view for mobile
+    if (cardsContainer) {
+        cardsContainer.innerHTML = users.map(user => {
+            const usedMB = (user.storage_used / (1024 * 1024)).toFixed(2);
+            const quotaMB = (user.storage_quota / (1024 * 1024)).toFixed(2);
+            const percentage = user.storage_quota > 0 ? (user.storage_used / user.storage_quota * 100).toFixed(1) : 0;
+            const initial = user.username.charAt(0).toUpperCase();
+            const createdDate = new Date(user.created_at).toLocaleDateString();
+            const lastLogin = user.last_login_at ? new Date(user.last_login_at).toLocaleDateString() : 'Never';
+
+            return `
+                <div class="user-card">
+                    <div class="user-card-header">
+                        <div class="user-card-info">
+                            <div class="user-card-avatar">${initial}</div>
+                            <div class="user-card-details">
+                                <div class="user-card-username">${escapeHtml(user.username)}</div>
+                                <div class="user-card-id">ID: ${user.id}</div>
+                            </div>
+                        </div>
+                        <span class="badge ${user.is_admin ? 'admin' : 'user'}">
+                            ${user.is_admin ? '<i class="fa-solid fa-shield"></i> Admin' : '<i class="fa-solid fa-user"></i> User'}
+                        </span>
+                    </div>
+                    <div class="user-card-body">
+                        <div class="user-card-row">
+                            <span class="user-card-label">Storage Usage</span>
+                        </div>
+                        <div class="user-card-quota">
+                            <div class="user-card-quota-text">${usedMB} MB / ${quotaMB} MB</div>
+                            <div class="user-card-quota-bar">
+                                <div class="user-card-quota-fill" style="width: ${Math.min(percentage, 100)}%"></div>
+                            </div>
+                        </div>
+                        <div class="user-card-row">
+                            <span class="user-card-label">Created</span>
+                            <span class="user-card-value">${createdDate}</span>
+                        </div>
+                        <div class="user-card-row">
+                            <span class="user-card-label">Last Login</span>
+                            <span class="user-card-value">${lastLogin}</span>
+                        </div>
+                    </div>
+                    <div class="user-card-actions">
+                        <button class="btn-icon" onclick="openEditQuotaModal(${user.id}, '${escapeHtml(user.username)}', ${quotaMB})">
+                            <i class="fa-solid fa-pen-to-square"></i> Edit Quota
+                        </button>
+                        <button class="btn-icon danger" onclick="deleteUser(${user.id}, '${escapeHtml(user.username)}')" ${user.is_admin ? 'disabled' : ''}>
+                            <i class="fa-solid fa-trash"></i> Delete
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
 }
 
 function updateStats(users) {
