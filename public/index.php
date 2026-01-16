@@ -9,8 +9,8 @@
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Sans:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap" rel="stylesheet">
+
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
@@ -446,7 +446,7 @@
 
     <script>
         // UI-only: sidebar drawer on mobile + auth tabs (keeps existing App event listeners too)
-        (function () {
+        (function() {
             const shell = document.documentElement;
             const toggle = document.getElementById('sidebar-toggle');
             const app = document.getElementById('app-container');
@@ -481,14 +481,14 @@
     <!-- Scripts -->
     <script src="assets/js/crypto-utils.js?v=<?php echo filemtime('assets/js/crypto-utils.js'); ?>"></script>
     <script src="assets/js/api.js?v=<?php echo filemtime('assets/js/api.js'); ?>"></script>
-    
+
     <!-- Modular Components -->
     <script src="assets/js/modules/ui-helpers.js?v=<?php echo filemtime('assets/js/modules/ui-helpers.js'); ?>"></script>
     <script src="assets/js/modules/progress-bar.js?v=<?php echo filemtime('assets/js/modules/progress-bar.js'); ?>"></script>
     <script src="assets/js/modules/auth.js?v=<?php echo filemtime('assets/js/modules/auth.js'); ?>"></script>
     <script src="assets/js/modules/file-operations.js?v=<?php echo filemtime('assets/js/modules/file-operations.js'); ?>"></script>
     <script src="assets/js/modules/folder-operations.js?v=<?php echo filemtime('assets/js/modules/folder-operations.js'); ?>"></script>
-    
+
     <!-- Main Application -->
     <script src="assets/js/app.js?v=<?php echo filemtime('assets/js/app.js'); ?>"></script>
 </body>
