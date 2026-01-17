@@ -47,9 +47,9 @@ return [
         'driver' => 'mysql',
         'host' => 'localhost',
         'port' => '3306',
-        'database' => 'vault_drive',
-        'username' => 'root',
-        'password' => '',
+        'database' => 'u522952661_vault_drive',
+        'username' => 'u522952661_vault_root',
+        'password' => 'kqBMDzeTPv7B7Tn',
         'charset' => 'utf8mb4',
         'collation' => 'utf8mb4_unicode_ci',
         'prefix' => '',
@@ -72,7 +72,7 @@ return [
      * Generate a strong secret: openssl rand -base64 32
      */
     'jwt' => [
-        'secret' => 'ssCU1ZKqDMu7A3qRCZoOKEY',
+        'secret' => 'ssCU1ZKqDMu7A3qRCZoOKE0G6q8v1Y3h5gX2Jr0p9mE=',
         'algorithm' => 'HS256',
         'expiration' => 86400, // 24 hours in seconds
         'refresh_expiration' => 604800, // 7 days in seconds
@@ -93,7 +93,7 @@ return [
      */
     'storage' => [
         // Default storage quota per user (bytes)
-        'default_quota' => 10737418240, // 10 GB
+        'default_quota' => 10000000, // 10 MB
 
         // Upload chunk size for multipart uploads
         'chunk_size' => 1048576, // 1 MB

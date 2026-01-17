@@ -39,8 +39,8 @@ class UserService
         $userFolder = $this->generateUserFolderName($username);
 
         $stmt = $this->pdo->prepare("INSERT INTO {$this->table} 
-        (username, password_hash, client_salt, kdf_salt, server_salt, encrypted_master_key, user_folder, created_at) 
-        VALUES (:username, :password_hash, :client_salt, :kdf_salt, :server_salt, :encrypted_master_key, :user_folder, NOW())");
+        (username, password_hash, client_salt, kdf_salt, server_salt, encrypted_master_key, user_folder, storage_quota, created_at) 
+        VALUES (:username, :password_hash, :client_salt, :kdf_salt, :server_salt, :encrypted_master_key, :user_folder, :storage_quota, NOW())");
 
         $stmt->execute([
             'username' => $username,
@@ -50,6 +50,7 @@ class UserService
             'server_salt' => $serverSaltHex,
             'user_folder' => $userFolder,
             'encrypted_master_key' => $encryptedMasterKey,
+            'storage_quota' => $this->config['storage']['default_quota'],
         ]);
 
 
