@@ -426,6 +426,8 @@ const App = {
 
     /**
      * Render file list with multiple selection support
+     * File/folder names are decrypted with their parent's key
+     * Sorted: folders first (alphabetically), then files (alphabetically)
      */
     async renderFileList() {
         const tbody = document.getElementById('file-list-body');
@@ -444,18 +446,34 @@ const App = {
         document.querySelector('.file-cards').style.display = '';
         document.getElementById('empty-state').classList.add('hidden');
 
+        // Get parent key for decryption (masterKey for root, folder's key for subfolders)
+        const parentKey = await this.getParentKey();
+
+        // Decrypt all filenames first for sorting
+        const filesWithNames = [];
         for (const file of this.files) {
             try {
-                const displayName = await CryptoUtils.decryptFilename(file.encrypted_name, this.masterKey);
-
-                // Render desktop row
-                this.renderDesktopRow(file, displayName, tbody);
-
-                // Render mobile card
-                this.renderMobileCard(file, displayName, cardsContainer);
+                const displayName = await CryptoUtils.decryptFilename(file.encrypted_name, parentKey);
+                filesWithNames.push({ file, displayName });
             } catch (error) {
                 console.error('Error decrypting file name:', error);
+                filesWithNames.push({ file, displayName: '[Decryption Error]' });
             }
+        }
+
+        // Sort: folders first (alphabetically), then files (alphabetically)
+        filesWithNames.sort((a, b) => {
+            // Folders come before files
+            if (a.file.type === 'folder' && b.file.type !== 'folder') return -1;
+            if (a.file.type !== 'folder' && b.file.type === 'folder') return 1;
+            // Same type: sort alphabetically (case-insensitive)
+            return a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' });
+        });
+
+        // Render sorted files
+        for (const { file, displayName } of filesWithNames) {
+            this.renderDesktopRow(file, displayName, tbody);
+            this.renderMobileCard(file, displayName, cardsContainer);
         }
     },
 
@@ -526,6 +544,9 @@ const App = {
         }
 
         actionsDiv.innerHTML += `
+            <button class="action-btn" onclick="App.showShareModal(${file.id}, '${escapeHtml(displayName)}', '${file.type}')" title="Share">
+                <i class="fas fa-share-nodes"></i>
+            </button>
             <button class="action-btn" onclick="App.showRenameModal(${file.id}, '${escapeHtml(displayName)}')" title="Rename">
                 <i class="fas fa-edit"></i>
             </button>
@@ -584,6 +605,9 @@ const App = {
                         <i class="fas fa-download"></i>
                     </button>
                 ` : ''}
+                <button class="action-btn" onclick="App.showShareModal(${file.id}, '${escapeHtml(displayName)}', '${file.type}')" title="Share">
+                    <i class="fas fa-share-nodes"></i>
+                </button>
                 <button class="action-btn" onclick="App.showRenameModal(${file.id}, '${escapeHtml(displayName)}')" title="Rename">
                     <i class="fas fa-edit"></i>
                 </button>
@@ -601,6 +625,7 @@ const App = {
 
     /**
      * Get the parent key for creating new items
+     * Returns masterKey for root, or cached folder key for subfolders
      */
     async getParentKey() {
         if (this.currentFolderId === null) {
@@ -611,16 +636,9 @@ const App = {
             return this.folderKeyCache.get(this.currentFolderId);
         }
 
-        if (!this.currentFolder || !this.currentFolder.encrypted_key) {
-            throw new Error('Current folder key not found');
-        }
-
-        return await FolderOperations.getKeyForItem(
-            this.currentFolder,
-            this.files,
-            this.masterKey,
-            this.folderKeyCache
-        );
+        // If we're in a folder but key is not cached, this is an error state
+        // This shouldn't happen as openFolder caches the key before navigating
+        throw new Error('Current folder key not found in cache');
     },
 
     /**
@@ -663,11 +681,24 @@ const App = {
 
     /**
      * Open folder
+     * Decrypts folder key and caches it before navigating
      */
     async openFolder(folderId, folderName) {
         const folderObj = this.files.find(f => f.id === folderId && f.type === 'folder');
         if (folderObj) {
             this.currentFolder = folderObj;
+
+            // Decrypt folder key with current parent key and cache it
+            if (!this.folderKeyCache.has(folderId) && folderObj.encrypted_key) {
+                try {
+                    const parentKey = await this.getParentKey();
+                    const folderKeyRaw = await CryptoUtils.decryptItemKey(folderObj.encrypted_key, parentKey);
+                    const folderKey = await CryptoUtils.importRawKey(folderKeyRaw);
+                    this.folderKeyCache.set(folderId, folderKey);
+                } catch (error) {
+                    console.error('Error caching folder key:', error);
+                }
+            }
         }
 
         this.folderHistory.push({ id: folderId, name: folderName });
@@ -750,13 +781,16 @@ const App = {
 
     /**
      * Download file
+     * File is decrypted with parent key (folder's key or masterKey for root)
      */
     async downloadFile(fileId, filename) {
         try {
             showLoading(`Preparing download for ${filename}...`);
             hideLoading();
 
-            await FileOperations.downloadFile(fileId, filename, this.masterKey);
+            // Get parent key for file decryption
+            const parentKey = await this.getParentKey();
+            await FileOperations.downloadFile(fileId, filename, parentKey);
             showToast(`${filename} downloaded successfully!`, 'success');
         } catch (error) {
             console.error('Download error:', error);
@@ -801,6 +835,7 @@ const App = {
 
     /**
      * Handle rename
+     * Filename is encrypted with parent key (folder's key or masterKey for root)
      */
     async handleRename() {
         const newName = document.getElementById('rename-input').value.trim();
@@ -811,7 +846,9 @@ const App = {
 
         try {
             showLoading('Renaming...');
-            await FileOperations.renameFile(this.selectedFileForRename, newName, this.masterKey);
+            // Get parent key for filename encryption
+            const parentKey = await this.getParentKey();
+            await FileOperations.renameFile(this.selectedFileForRename, newName, parentKey);
 
             closeRenameModal();
             showToast('Renamed successfully!', 'success');
@@ -874,6 +911,7 @@ const App = {
 
     /**
      * Load folder tree for move operation
+     * Folder names are decrypted with their parent's key
      */
     async loadFolderTree() {
         try {
@@ -888,7 +926,8 @@ const App = {
                 response.data.files,
                 this.masterKey,
                 this.currentFolderId,
-                this.selectedFileForMove
+                this.selectedFileForMove,
+                this.folderKeyCache
             );
 
             // Render tree
@@ -967,6 +1006,119 @@ const App = {
             showToast(error.message || 'Move failed', 'error');
             hideLoading();
         }
+    },
+
+    /**
+     * Show share modal
+     */
+    showShareModal(fileId, fileName, fileType) {
+        this.selectedFileForShare = { id: fileId, name: fileName, type: fileType };
+        document.getElementById('share-file-name').textContent = fileName;
+        document.getElementById('share-password').value = '';
+        document.getElementById('share-confirm-password').value = '';
+        document.getElementById('share-can-upload').checked = false;
+        document.getElementById('share-can-delete').checked = false;
+        document.getElementById('share-can-rename').checked = false;
+        document.getElementById('share-can-move').checked = false;
+        document.getElementById('share-link-container').classList.add('hidden');
+        document.getElementById('share-modal').classList.remove('hidden');
+    },
+
+    /**
+     * Handle share creation
+     */
+    async handleCreateShare() {
+        const password = document.getElementById('share-password').value;
+        const confirmPassword = document.getElementById('share-confirm-password').value;
+
+        if (!password) {
+            showToast('Please enter a password', 'error');
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            showToast('Passwords do not match', 'error');
+            return;
+        }
+
+        if (password.length < 4) {
+            showToast('Password must be at least 4 characters', 'error');
+            return;
+        }
+
+        try {
+            showLoading('Creating share...');
+
+            // Generate salts
+            const passwordSalt = CryptoUtils.generateSalt();
+            const kdfSalt = CryptoUtils.generateSalt();
+
+            // Hash password for server verification
+            const passwordHash = await CryptoUtils.hashPassword(password, passwordSalt);
+
+            // Derive key from password for encryption
+            const sharePasswordKey = await CryptoUtils.deriveKey(password, kdfSalt);
+
+            // Get the file's key
+            const file = this.files.find(f => f.id === this.selectedFileForShare.id);
+            if (!file) {
+                throw new Error('File not found');
+            }
+
+            // Decrypt the file's key with parent key
+            const parentKey = await this.getParentKey();
+            const fileKeyBuffer = await CryptoUtils.decryptItemKey(file.encrypted_key, parentKey);
+
+            // Re-encrypt file key with share password key
+            const shareKey = await CryptoUtils.importRawKey(fileKeyBuffer);
+            const exportedShareKey = await crypto.subtle.exportKey('raw', shareKey);
+            const encryptedShareKey = await CryptoUtils.encryptMasterKey(shareKey, sharePasswordKey);
+
+            // Get permissions
+            const permissions = {
+                can_upload: document.getElementById('share-can-upload').checked ? 1 : 0,
+                can_delete: document.getElementById('share-can-delete').checked ? 1 : 0,
+                can_rename: document.getElementById('share-can-rename').checked ? 1 : 0,
+                can_move: document.getElementById('share-can-move').checked ? 1 : 0
+            };
+
+            // Create share on server
+            const response = await API.files.createShare(
+                this.selectedFileForShare.id,
+                encryptedShareKey,
+                passwordHash,
+                CryptoUtils.arrayBufferToHex(passwordSalt),
+                CryptoUtils.arrayBufferToHex(kdfSalt),
+                permissions
+            );
+
+            if (!response.success) {
+                throw new Error(response.message || 'Failed to create share');
+            }
+
+            // Show share link
+            const shareUrl = response.data.share_url || (window.location.origin + '/vault-drive/public/share.php?token=' + response.data.token);
+            document.getElementById('share-link-input').value = shareUrl;
+            document.getElementById('share-link-container').classList.remove('hidden');
+
+            hideLoading();
+            showToast('Share created successfully!', 'success');
+
+        } catch (error) {
+            console.error('Share creation error:', error);
+            showToast('Failed to create share: ' + error.message, 'error');
+            hideLoading();
+        }
+    },
+
+    /**
+     * Copy share link to clipboard
+     */
+    copyShareLink() {
+        const input = document.getElementById('share-link-input');
+        input.select();
+        document.execCommand('copy');
+        showToast('Link copied to clipboard!', 'success');
     },
 
     /**

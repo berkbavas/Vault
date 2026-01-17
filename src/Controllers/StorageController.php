@@ -76,8 +76,9 @@ class StorageController extends Controller
         $this->storageService = new StorageService($this->pdo);
     }
 
-    public function list($userId)
+    public function list()
     {
+        $userId = $this->requireAuth();
         $this->validateJson($this->rules['list_files']);
         $parentId = $this->request->json('parent_id', null);
         $files = $this->storageService->list($userId, $parentId);
@@ -95,8 +96,9 @@ class StorageController extends Controller
         ])->send();
     }
 
-    public function createFolder($userId)
+    public function createFolder()
     {
+        $userId = $this->requireAuth();
         $this->validateJson($this->rules['create_folder']);
         $parentId = $this->request->json('parent_id');
         $encryptedName = $this->request->json('encrypted_name');
@@ -108,8 +110,9 @@ class StorageController extends Controller
         ], 'Folder created successfully')->send();
     }
 
-    public function rename($userId)
+    public function rename()
     {
+        $userId = $this->requireAuth(); 
         $this->validateJson($this->rules['rename']);
         $fileId = $this->request->json('id');
         $newEncryptedName = $this->request->json('new_encrypted_name');
@@ -120,8 +123,9 @@ class StorageController extends Controller
         ], 'Item renamed successfully')->send();
     }
 
-    public function move($userId)
+    public function move()
     {
+        $userId = $this->requireAuth();
         $this->validateJson($this->rules['move']);
         $fileId = $this->request->json('id');
         $newParentId = $this->request->json('new_parent_id', null);
@@ -134,8 +138,9 @@ class StorageController extends Controller
         ], 'Item moved successfully')->send();
     }
 
-    public function delete($userId)
+    public function delete()
     {
+        $userId = $this->requireAuth();
         $this->validateJson($this->rules['delete']);
         $fileId = $this->request->json('id');
         $this->storageService->delete($userId, $fileId);
@@ -144,8 +149,9 @@ class StorageController extends Controller
         ], 'Item deleted successfully')->send();
     }
 
-    public function deleteMultiple($userId)
+    public function deleteMultiple()
     {
+        $userId = $this->requireAuth();
         $this->validateJson($this->rules['delete_multiple']);
         $fileIds = $this->request->json('ids');
         $this->storageService->deleteMultiple($userId, $fileIds);
@@ -155,8 +161,9 @@ class StorageController extends Controller
         ], 'Items deleted successfully')->send();
     }
 
-    public function upload($userId)
+    public function upload()
     {
+        $userId = $this->requireAuth();
         $this->validateFile();
         $this->validate($this->rules['upload']); // To validate parent_id if provided
 
@@ -173,8 +180,9 @@ class StorageController extends Controller
         ], 'File uploaded successfully')->send();
     }
 
-    public function download($userId)
+    public function download()
     {
+        $userId = $this->requireAuth();
         $this->validate($this->rules['download']);
         $fileId = $this->request->query('id');
         $fileData = $this->storageService->getFileForDownload($userId, $fileId);
@@ -286,8 +294,9 @@ class StorageController extends Controller
     /**
      * Upload a chunk of a file
      */
-    public function uploadChunk($userId)
+    public function uploadChunk()
     {
+        $userId = $this->requireAuth();
         $this->validateChunk();
         $this->validate($this->rules['upload_chunk']);
         $uploadId = $this->request->post('upload_id');
@@ -304,8 +313,9 @@ class StorageController extends Controller
     /**
      * Finalize chunked upload
      */
-    public function finalizeUpload($userId)
+    public function finalizeUpload(): JsonResponse
     {
+        $userId = $this->requireAuth();
         $this->validateJson($this->rules['finalize_upload']);
 
         $uploadId = $this->request->json('upload_id');
@@ -328,26 +338,5 @@ class StorageController extends Controller
         return $this->success([
             'file' => $fileData
         ], 'File uploaded successfully')->send();
-    }
-
-    public function share($userId)
-    {
-        $this->validateJson($this->rules['share_file']);
-
-        $fileId = $this->request->json('file_id');
-        $encryptedKey = $this->request->json('encrypted_key');
-        $expiresAt = $this->request->json('expires_at', null);
-
-        $file = $this->storageService->getFileById($fileId, $userId);
-
-        if ($file === null) {
-            return $this->error('File not found or access denied', 404)->send();
-        }
-
-        $token = $this->storageService->createShare($fileId, $encryptedKey, $expiresAt);
-
-        return $this->success([
-            'token' => $token
-        ], 'File shared successfully')->send();
     }
 }

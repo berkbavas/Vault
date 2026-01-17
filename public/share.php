@@ -4,7 +4,7 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Vault Drive</title>
+    <title>Shared Content - Vault Drive</title>
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -50,12 +50,11 @@
                         <div class="progress-title" id="upload-progress-title">Uploading file...</div>
                         <div class="progress-subtitle" id="upload-progress-subtitle">Preparing...</div>
                     </div>
-                    <button class="progress-close" onclick="App.cancelProgress('upload')" title="Cancel">
+                    <button class="progress-close" onclick="ShareApp.cancelProgress('upload')" title="Cancel">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
                 <div class="progress-body">
-                    <!-- Encryption Animation -->
                     <div id="upload-crypto-animation" class="crypto-animation encrypting">
                         <div class="crypto-matrix-bg" id="upload-matrix-bg"></div>
                         <div class="data-flow"></div>
@@ -113,12 +112,11 @@
                         <div class="progress-title" id="download-progress-title">Downloading file...</div>
                         <div class="progress-subtitle" id="download-progress-subtitle">Preparing...</div>
                     </div>
-                    <button class="progress-close" onclick="App.cancelProgress('download')" title="Cancel">
+                    <button class="progress-close" onclick="ShareApp.cancelProgress('download')" title="Cancel">
                         <i class="fa-solid fa-xmark"></i>
                     </button>
                 </div>
                 <div class="progress-body">
-                    <!-- Decryption Animation -->
                     <div id="download-crypto-animation" class="crypto-animation decrypting">
                         <div class="crypto-matrix-bg" id="download-matrix-bg"></div>
                         <div class="data-flow"></div>
@@ -166,8 +164,8 @@
         </div>
     </div>
 
-    <!-- Auth -->
-    <div id="auth-container" class="auth-shell">
+    <!-- Password Prompt -->
+    <div id="password-container" class="auth-shell">
         <div class="auth-card">
             <div class="auth-header">
                 <div class="green-dot"></div>
@@ -175,100 +173,53 @@
                 <div class="red-dot"></div>
             </div>
             <div class="auth-brand">
-                <div class="brand-badge" aria-hidden="true"><i class="fa-solid fa-shield-halved"></i></div>
+                <div class="brand-badge" aria-hidden="true"><i class="fa-solid fa-share-nodes"></i></div>
                 <div class="brand-text">
-                    <div class="brand-name">Vault Drive</div>
-                    <div class="brand-subtitle">Zero‑knowledge secure storage</div>
+                    <div class="brand-name">Shared Content</div>
+                    <div class="brand-subtitle" id="share-subtitle">Enter password to access</div>
                 </div>
             </div>
 
-            <div class="auth-tabs" role="tablist" aria-label="Authentication tabs">
-                <button class="tab-btn is-active" data-tab="login" type="button">
-                    Sign in
-                </button>
-                <button class="tab-btn" data-tab="register" type="button">
-                    Create account
-                </button>
-            </div>
-
-            <!-- Login -->
-            <div id="login-form" class="auth-form active" role="tabpanel">
-                <form id="login-form-element" class="form">
-                    <div class="field">
-                        <div class="input-group">
-                            <span class="input-icon"><i class="fa-regular fa-user"></i></span>
-                            <input id="login-username" type="text" autocomplete="username" placeholder="Username"
-                                required />
-                        </div>
-                    </div>
-
+            <div id="password-form-container" class="auth-form active" role="tabpanel">
+                <form id="password-form" class="form">
                     <div class="field">
                         <div class="input-group">
                             <span class="input-icon"><i class="fa-solid fa-key"></i></span>
-                            <input id="login-password" type="password" autocomplete="current-password"
-                                placeholder="Password" required />
+                            <input id="share-password" type="password" autocomplete="current-password"
+                                placeholder="Share password" required />
                         </div>
                     </div>
 
                     <button class="btn btn-primary btn-block" type="submit">
-                        <i class="fa-solid fa-right-to-bracket"></i>
-                        Sign in
+                        <i class="fa-solid fa-unlock"></i>
+                        Unlock
                     </button>
-
-
                 </form>
             </div>
 
-            <!-- Register -->
-            <div id="register-form" class="auth-form" role="tabpanel">
-                <form id="register-form-element" class="form">
-                    <div class="field">
-                        <div class="input-group">
-                            <span class="input-icon"><i class="fa-regular fa-user"></i></span>
-                            <input id="register-username" type="text" autocomplete="username"
-                                placeholder="Choose a username" required />
-                        </div>
-                    </div>
-
-                    <div class="field">
-                        <div class="input-group">
-                            <span class="input-icon"><i class="fa-solid fa-lock"></i></span>
-                            <input id="register-password" type="password" autocomplete="new-password"
-                                placeholder="Create a password" required />
-                        </div>
-                    </div>
-
-                    <div class="field">
-                        <div class="input-group">
-                            <span class="input-icon"><i class="fa-solid fa-lock"></i></span>
-                            <input id="register-confirm-password" type="password" autocomplete="new-password"
-                                placeholder="Repeat password" required />
-                        </div>
-                    </div>
-
-                    <button class="btn btn-primary btn-block" type="submit">
-                        <i class="fa-solid fa-user-plus"></i>
-                        Create account
-                    </button>
-
-                </form>
+            <div id="error-container" class="auth-form hidden">
+                <div class="empty-state">
+                    <div class="empty-icon"><i class="fa-solid fa-circle-exclamation"></i></div>
+                    <div class="empty-title" id="error-title">Share Not Found</div>
+                    <div class="empty-subtitle" id="error-message">This share link may be invalid or expired.</div>
+                </div>
             </div>
 
             <div class="auth-note">
                 <div class="note-row">
                     <i class="fa-regular fa-circle-check"></i>
-                    <span>Encryption happens in your browser.</span>
+                    <span>End-to-end encrypted sharing.</span>
                 </div>
                 <div class="note-row">
                     <i class="fa-regular fa-circle-check"></i>
-                    <span>Server never sees plaintext names or files.</span>
+                    <span>Password never leaves your browser.</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- App -->
-    <div id="app-container" class="app-shell hidden">
+    <!-- Shared Content App -->
+    <div id="share-app-container" class="app-shell hidden">
         <!-- Sidebar Backdrop -->
         <div id="sidebar-backdrop" class="sidebar-backdrop" hidden></div>
 
@@ -276,46 +227,55 @@
         <aside class="sidebar" aria-label="Sidebar">
             <div class="sidebar-top">
                 <div class="sidebar-brand">
-                    <div class="brand-badge small" aria-hidden="true"><i class="fa-solid fa-shield-halved"></i></div>
+                    <div class="brand-badge small" aria-hidden="true"><i class="fa-solid fa-share-nodes"></i></div>
                     <div class="brand-text">
-                        <div class="brand-name">Vault Drive</div>
-                        <div class="brand-subtitle">Secure storage</div>
-                    </div>
-                </div>
-
-                <div class="user-card scan-effect">
-                    <div class="user-avatar" aria-hidden="true"><i class="fa-regular fa-user"></i></div>
-                    <div class="user-meta">
-                        <div class="user-name" id="username-display"></div>
-                        <div class="user-sub blink-matrix">Encrypted session</div>
+                        <div class="brand-name">Shared Content</div>
+                        <div class="brand-subtitle">Encrypted access</div>
                     </div>
                 </div>
 
                 <div class="sidebar-card">
-                    <div class="sidebar-card-title">Storage</div>
-                    <div class="quota-mini">
-                        <div class="quota-row">
-                            <span class="quota-label"><i class="fa-solid fa-database"></i> Used</span>
-                            <span class="quota-value"><span id="quota-used">0</span> / <span
-                                    id="quota-total">0</span></span>
+                    <div class="sidebar-card-title">Share Info</div>
+                    <div class="share-info-mini">
+                        <div class="share-info-row">
+                            <span class="share-info-label"><i class="fa-solid fa-folder"></i> Type</span>
+                            <span class="share-info-value" id="share-type">-</span>
                         </div>
-                        <div class="quota-bar" aria-hidden="true">
-                            <div id="quota-bar-fill" class="quota-bar-fill" style="width: 0%"></div>
-                        </div>
-                        <div class="quota-row quota-row-bottom">
-                            <span class="quota-hint">Usage</span>
-                            <span id="quota-percentage" class="quota-percent">0%</span>
+                        <div class="share-info-row">
+                            <span class="share-info-label"><i class="fa-solid fa-clock"></i> Expires</span>
+                            <span class="share-info-value" id="share-expires">Never</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="sidebar-actions">
-                    <button id="upload-btn" class="btn btn-primary btn-wide" type="button">
+                <div class="sidebar-card">
+                    <div class="sidebar-card-title">Permissions</div>
+                    <div class="share-permissions">
+                        <div class="permission-item" id="perm-download">
+                            <i class="fa-solid fa-download"></i> Download
+                        </div>
+                        <div class="permission-item" id="perm-upload">
+                            <i class="fa-solid fa-upload"></i> Upload
+                        </div>
+                        <div class="permission-item" id="perm-delete">
+                            <i class="fa-solid fa-trash"></i> Delete
+                        </div>
+                        <div class="permission-item" id="perm-rename">
+                            <i class="fa-solid fa-edit"></i> Rename
+                        </div>
+                        <div class="permission-item" id="perm-move">
+                            <i class="fa-solid fa-arrows-alt"></i> Move
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-actions" id="share-actions">
+                    <button id="upload-btn" class="btn btn-primary btn-wide hidden" type="button">
                         <i class="fa-solid fa-upload"></i>
                         Upload
                     </button>
 
-                    <button id="new-folder-btn" class="btn btn-secondary btn-wide" type="button">
+                    <button id="new-folder-btn" class="btn btn-secondary btn-wide hidden" type="button">
                         <i class="fa-solid fa-folder-plus"></i>
                         New folder
                     </button>
@@ -323,35 +283,21 @@
                     <input type="file" id="file-input" multiple class="hidden" />
 
                     <div id="bulk-actions" class="bulk-actions" style="opacity: 0;">
-                        <button id="bulk-delete-btn" class="btn btn-danger btn-wide" type="button">
+                        <button id="bulk-delete-btn" class="btn btn-danger btn-wide hidden" type="button">
                             <i class="fa-solid fa-trash"></i>
                             Delete
                             <span class="badge" id="selected-count">0</span>
                         </button>
                     </div>
                 </div>
-
-
             </div>
 
             <div class="sidebar-bottom">
                 <div class="sidebar-actions">
-                    <button id="admin-panel-btn" class="btn btn-tertiary btn-wide hidden" type="button"
-                        title="Admin Panel" onclick="window.location.href='admin.php'">
-                        <i class="fa-solid fa-shield-halved"></i>
-                        Admin Panel
-                    </button>
-
-                    <button id="change-password-btn" class="btn btn-tertiary btn-wide" type="button"
-                        title="Change Password">
-                        <i class="fa-solid fa-lock"></i>
-                        Change password
-                    </button>
-
-                    <button id="logout-btn" class="btn btn-tertiary btn-wide" type="button" title="Logout">
-                        <i class="fa-solid fa-right-from-bracket"></i>
-                        Logout
-                    </button>
+                    <a href="index.php" class="btn btn-tertiary btn-wide">
+                        <i class="fa-solid fa-home"></i>
+                        Go to Vault Drive
+                    </a>
                 </div>
             </div>
         </aside>
@@ -364,18 +310,14 @@
                         <i class="fa-solid fa-bars"></i>
                     </button>
 
-                    <!-- Breadcrumb moved into header -->
                     <nav class="breadcrumb" id="breadcrumb" aria-label="Breadcrumb"></nav>
-                </div>
-
-                <div class="topbar-right">
                 </div>
             </header>
 
             <main class="content">
                 <div class="content-card">
                     <div class="content-card-header">
-                        <div class="content-card-title">Files</div>
+                        <div class="content-card-title" id="content-title">Shared Files</div>
                         <div class="content-card-subtitle">Encrypted names, decrypted locally</div>
                     </div>
 
@@ -386,7 +328,7 @@
                                 <tr>
                                     <th class="checkbox-col">
                                         <input type="checkbox" class="select-all-checkbox" id="select-all"
-                                            onchange="App.toggleAllSelections(this.checked)" title="Select All">
+                                            onchange="ShareApp.toggleAllSelections(this.checked)" title="Select All">
                                     </th>
                                     <th>Name</th>
                                     <th class="col-size">Size</th>
@@ -403,40 +345,23 @@
 
                     <div id="empty-state" class="empty-state hidden">
                         <div class="empty-icon" aria-hidden="true"><i class="fa-regular fa-folder-open"></i></div>
-                        <div class="empty-title" id="empty-title"><!-- JavaScript will set this --></div>
-                        <div class="empty-subtitle">Upload files or create a new folder to get started.</div>
+                        <div class="empty-title" id="empty-title">This folder is empty</div>
+                        <div class="empty-subtitle">No files or folders here yet.</div>
+                    </div>
+
+                    <!-- Single file download view -->
+                    <div id="single-file-view" class="empty-state hidden">
+                        <div class="empty-icon" aria-hidden="true"><i class="fa-solid fa-file"></i></div>
+                        <div class="empty-title" id="single-file-name">-</div>
+                        <div class="empty-subtitle" id="single-file-info">-</div>
+                        <button class="btn btn-primary" id="download-single-file-btn">
+                            <i class="fa-solid fa-download"></i>
+                            Download File
+                        </button>
                     </div>
                 </div>
             </main>
         </section>
-    </div>
-
-    <!-- Change Password Modal -->
-    <div id="change-password-modal" class="modal hidden" aria-hidden="true">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Change Password</h3>
-                <button class="modal-close" onclick="closeChangePasswordModal()" aria-label="Close">&times;</button>
-            </div>
-            <form id="change-password-form" class="modal-body">
-                <div class="field">
-                    <input type="password" id="current-password" required autocomplete="current-password"
-                        placeholder="Current password">
-                </div>
-                <div class="field">
-                    <input type="password" id="new-password" required autocomplete="new-password"
-                        placeholder="New password">
-                </div>
-                <div class="field">
-                    <input type="password" id="confirm-new-password" required autocomplete="new-password"
-                        placeholder="Repeat new password">
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeChangePasswordModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Change password</button>
-                </div>
-            </form>
-        </div>
     </div>
 
     <!-- Rename Modal -->
@@ -490,66 +415,9 @@
                 <div class="folder-tree" id="folder-tree"></div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeMoveModal()">Cancel</button>
-                    <button type="button" class="btn btn-primary" onclick="App.confirmMove()">Move here</button>
+                    <button type="button" class="btn btn-primary" onclick="ShareApp.confirmMove()">Move here</button>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Share Modal -->
-    <div id="share-modal" class="modal hidden" aria-hidden="true">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3><i class="fas fa-share-nodes"></i> Share "<span id="share-file-name"></span>"</h3>
-                <button class="modal-close" onclick="closeShareModal()" aria-label="Close">&times;</button>
-            </div>
-            <form id="share-form" class="modal-body" onsubmit="event.preventDefault(); App.handleCreateShare();">
-                <div class="field">
-                    <input type="password" id="share-password" required placeholder="Password" autocomplete="new-password">
-                </div>
-                
-                <div class="field">
-                    <input type="password" id="share-confirm-password" required placeholder="Confirm password" autocomplete="new-password">
-                </div>
-
-                <div class="field">
-                    <label>Permissions</label>
-                    <div class="permission-checkboxes">
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="share-can-upload">
-                            <span><i class="fas fa-upload"></i> Upload</span>
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="share-can-delete">
-                            <span><i class="fas fa-trash"></i> Delete</span>
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="share-can-rename">
-                            <span><i class="fas fa-edit"></i> Rename</span>
-                        </label>
-                        <label class="checkbox-label">
-                            <input type="checkbox" id="share-can-move">
-                            <span><i class="fas fa-arrows-alt"></i> Move</span>
-                        </label>
-                    </div>
-                </div>
-
-                <div id="share-link-container" class="field hidden">
-                    <div class="share-link-group">
-                        <input type="text" id="share-link-input" readonly placeholder="Share link will appear here">
-                        <button type="button" class="btn btn-secondary" onclick="App.copyShareLink()" title="Copy">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="modal-actions">
-                    <button type="button" class="btn btn-secondary" onclick="closeShareModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-share-nodes"></i> Create Share
-                    </button>
-                </div>
-            </form>
         </div>
     </div>
 
@@ -557,11 +425,10 @@
     <div id="toast-container" class="toast-container" aria-live="polite" aria-atomic="true"></div>
 
     <script>
-        // UI-only: sidebar drawer on mobile + auth tabs (keeps existing App event listeners too)
+        // UI-only: sidebar drawer on mobile
         (function() {
-            const shell = document.documentElement;
             const toggle = document.getElementById('sidebar-toggle');
-            const app = document.getElementById('app-container');
+            const app = document.getElementById('share-app-container');
             const backdrop = document.getElementById('sidebar-backdrop');
 
             if (toggle && app) {
@@ -571,38 +438,16 @@
             if (backdrop && app) {
                 backdrop.addEventListener('click', () => app.classList.remove('sidebar-open'));
             }
-
-            const tabButtons = document.querySelectorAll('.tab-btn');
-            tabButtons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    tabButtons.forEach(b => b.classList.remove('is-active'));
-                    btn.classList.add('is-active');
-                    const target = btn.dataset.tab;
-                    if (target === 'login') {
-                        document.getElementById('register-form')?.classList.remove('active');
-                        document.getElementById('login-form')?.classList.add('active');
-                    } else {
-                        document.getElementById('login-form')?.classList.remove('active');
-                        document.getElementById('register-form')?.classList.add('active');
-                    }
-                });
-            });
         })();
     </script>
 
     <!-- Scripts -->
     <script src="assets/js/crypto-utils.js?v=<?php echo filemtime('assets/js/crypto-utils.js'); ?>"></script>
-    <script src="assets/js/api.js?v=<?php echo filemtime('assets/js/api.js'); ?>"></script>
-
-    <!-- Modular Components -->
     <script src="assets/js/modules/ui-helpers.js?v=<?php echo filemtime('assets/js/modules/ui-helpers.js'); ?>"></script>
     <script src="assets/js/modules/progress-bar.js?v=<?php echo filemtime('assets/js/modules/progress-bar.js'); ?>"></script>
-    <script src="assets/js/modules/auth.js?v=<?php echo filemtime('assets/js/modules/auth.js'); ?>"></script>
-    <script src="assets/js/modules/file-operations.js?v=<?php echo filemtime('assets/js/modules/file-operations.js'); ?>"></script>
-    <script src="assets/js/modules/folder-operations.js?v=<?php echo filemtime('assets/js/modules/folder-operations.js'); ?>"></script>
+    <script src="assets/js/share-api.js?v=<?php echo filemtime('assets/js/share-api.js'); ?>"></script>
+    <script src="assets/js/share-app.js?v=<?php echo filemtime('assets/js/share-app.js'); ?>"></script>
 
-    <!-- Main Application -->
-    <script src="assets/js/app.js?v=<?php echo filemtime('assets/js/app.js'); ?>"></script>
 </body>
 
 </html>

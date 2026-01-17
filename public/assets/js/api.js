@@ -315,6 +315,48 @@ const API = {
                     parent_id: parentId
                 })
             });
+        },
+
+        /**
+         * Create a share for a file or folder
+         */
+        async createShare(fileId, encryptedKey, passwordHash, passwordSalt, kdfSalt, permissions = {}, expiresAt = null) {
+            return await API.request('/file/share.php', {
+                method: 'POST',
+                body: JSON.stringify({
+                    file_id: fileId,
+                    encrypted_key: encryptedKey,
+                    password_hash: passwordHash,
+                    password_salt: passwordSalt,
+                    kdf_salt: kdfSalt,
+                    can_upload: permissions.can_upload || 0,
+                    can_delete: permissions.can_delete || 0,
+                    can_rename: permissions.can_rename || 0,
+                    can_move: permissions.can_move || 0,
+                    expires_at: expiresAt
+                })
+            });
+        },
+
+        /**
+         * List user's shares
+         */
+        async listShares() {
+            return await API.request('/file/list_shares.php', {
+                method: 'GET'
+            });
+        },
+
+        /**
+         * Delete a share
+         */
+        async deleteShare(shareId) {
+            return await API.request('/file/delete_share.php', {
+                method: 'POST',
+                body: JSON.stringify({
+                    share_id: shareId
+                })
+            });
         }
     },
 

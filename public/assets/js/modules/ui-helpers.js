@@ -266,8 +266,24 @@ function closeMoveModal() {
     document.getElementById('move-modal').classList.add('hidden');
 }
 
+function closeShareModal() {
+    const modal = document.getElementById('share-modal');
+    if (!modal) return;
+    modal.classList.add('hidden');
+    // Reset the modal state
+    const form = document.getElementById('share-form');
+    const linkContainer = document.getElementById('share-link-container');
+    if (form) form.classList.remove('hidden');
+    if (linkContainer) linkContainer.classList.add('hidden');
+}
+
 function confirmMove() {
-    App.confirmMove();
+    // Check which app is available
+    if (typeof ShareApp !== 'undefined') {
+        ShareApp.confirmMove();
+    } else if (typeof App !== 'undefined') {
+        App.confirmMove();
+    }
 }
 
 /**

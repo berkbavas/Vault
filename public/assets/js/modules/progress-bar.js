@@ -10,6 +10,32 @@ const cryptoAnimationIntervals = {
 };
 
 /**
+ * Get the current app's progress state
+ * Works with both App (main app) and ShareApp (share page)
+ */
+function getProgressState(type) {
+    // Check which app is available
+    if (typeof ShareApp !== 'undefined') {
+        return type === 'upload' ? ShareApp.uploadProgressState : ShareApp.downloadProgressState;
+    } else if (typeof App !== 'undefined') {
+        return type === 'upload' ? App.uploadProgressState : App.downloadProgressState;
+    }
+    // Fallback: return a dummy state
+    return {
+        isActive: false,
+        startTime: null,
+        lastUpdate: null,
+        loaded: 0,
+        total: 0,
+        speed: 0,
+        filename: null,
+        cancelled: false,
+        currentFile: 0,
+        totalFiles: 0
+    };
+}
+
+/**
  * Generate random hex string
  */
 function randomHex(length = 8) {
@@ -154,7 +180,7 @@ function completeCryptoAnimation(type) {
 function showProgress(type, filename, total, currentFile = 1, totalFiles = 1) {
     const modal = document.getElementById(`${type}-progress-modal`);
     const title = document.getElementById(`${type}-progress-title`);
-    const progressState = type === 'upload' ? App.uploadProgressState : App.downloadProgressState;
+    const progressState = getProgressState(type);
     
     progressState.isActive = true;
     progressState.startTime = Date.now();
@@ -196,7 +222,7 @@ function showProgress(type, filename, total, currentFile = 1, totalFiles = 1) {
  * @param {number} total - Total bytes
  */
 function updateProgress(type, loaded, total) {
-    const progressState = type === 'upload' ? App.uploadProgressState : App.downloadProgressState;
+    const progressState = getProgressState(type);
     if (!progressState.isActive) return;
     
     const now = Date.now();
@@ -244,7 +270,7 @@ function updateProgress(type, loaded, total) {
  * @param {string} type - 'upload' or 'download'
  */
 function completeProgress(type) {
-    const progressState = type === 'upload' ? App.uploadProgressState : App.downloadProgressState;
+    const progressState = getProgressState(type);
     if (!progressState.isActive) return;
     
     const modal = document.getElementById(`${type}-progress-modal`);
@@ -274,7 +300,7 @@ function hideProgress(type) {
     const modal = document.getElementById(`${type}-progress-modal`);
     const card = modal.querySelector('.progress-card');
     const cryptoAnimation = document.getElementById(`${type}-crypto-animation`);
-    const progressState = type === 'upload' ? App.uploadProgressState : App.downloadProgressState;
+    const progressState = getProgressState(type);
     
     // Stop crypto animation and clean up
     stopCryptoAnimation(type);

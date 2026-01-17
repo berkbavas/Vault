@@ -6,6 +6,7 @@
 const FolderOperations = {
     /**
      * Create a new folder
+     * Folder name is encrypted with parent key (folder's key or masterKey for root)
      */
     async createFolder(folderName, masterKey, currentFolderId, getParentKeyFn) {
         // Get parent key (master key if root, or current folder's key)
@@ -17,8 +18,8 @@ const FolderOperations = {
         // Encrypt folder key with parent key
         const encryptedFolderKey = await CryptoUtils.encryptItemKey(folderKey, parentKey);
 
-        // Encrypt folder name
-        const encryptedName = await CryptoUtils.encryptFilename(folderName, masterKey);
+        // Encrypt folder name with parent key
+        const encryptedName = await CryptoUtils.encryptFilename(folderName, parentKey);
 
         const response = await API.files.createFolder(encryptedName, encryptedFolderKey, currentFolderId);
         if (!response.success) {
@@ -111,8 +112,9 @@ const FolderOperations = {
 
     /**
      * Build folder tree recursively for move dialog
+     * Folder names are decrypted with their parent's key
      */
-    async buildFolderTree(files, masterKey, currentFolderId, selectedFileId) {
+    async buildFolderTree(files, masterKey, currentFolderId, selectedFileId, folderKeyCache) {
         const folders = files.filter(f => f.type === 'folder' && f.id !== selectedFileId);
         const tree = [];
 
@@ -125,9 +127,23 @@ const FolderOperations = {
         });
 
         // Recursively decrypt and build tree
-        const processFolder = async (folder, level) => {
+        const processFolder = async (folder, level, parentKey) => {
             try {
-                const decryptedName = await CryptoUtils.decryptFilename(folder.encrypted_name, masterKey);
+                // Decrypt folder name with parent key
+                const decryptedName = await CryptoUtils.decryptFilename(folder.encrypted_name, parentKey);
+                
+                // Get this folder's key for its children
+                let folderKey;
+                if (folderKeyCache && folderKeyCache.has(folder.id)) {
+                    folderKey = folderKeyCache.get(folder.id);
+                } else {
+                    const folderKeyRaw = await CryptoUtils.decryptItemKey(folder.encrypted_key, parentKey);
+                    folderKey = await CryptoUtils.importRawKey(folderKeyRaw);
+                    if (folderKeyCache) {
+                        folderKeyCache.set(folder.id, folderKey);
+                    }
+                }
+                
                 tree.push({
                     id: folder.id,
                     name: decryptedName,
@@ -135,20 +151,20 @@ const FolderOperations = {
                     disabled: folder.id === currentFolderId
                 });
 
-                // Find children
+                // Find children and process with this folder's key
                 const children = folders.filter(f => f.parent_id === folder.id);
                 for (const child of children) {
-                    await processFolder(child, level + 1);
+                    await processFolder(child, level + 1, folderKey);
                 }
             } catch (error) {
                 console.error('Error processing folder:', error);
             }
         };
 
-        // Process root level folders
+        // Process root level folders (they use masterKey)
         const rootFolders = folders.filter(f => f.parent_id === null || f.parent_id === undefined);
         for (const folder of rootFolders) {
-            await processFolder(folder, 1);
+            await processFolder(folder, 1, masterKey);
         }
 
         return tree;

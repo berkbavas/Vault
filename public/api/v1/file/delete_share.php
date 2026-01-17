@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Delete Share API
+ * Deletes a share created by the authenticated user
+ */
+
 require_once __DIR__ . '/../../../../autoload.php';
 
 use App\Core\Bootstrap;
@@ -10,8 +15,8 @@ try {
     Bootstrap::init();
     
     $controller = new ShareController();
-    $controller->createShare();
+    $controller->deleteShare();
     
 } catch (Exception $e) {
-    JsonResponse::error('Share failed', 500, ['exception' => $e->getMessage()])->send();
+    JsonResponse::error('Failed to delete share', 500, ['exception' => $e->getMessage()])->send();
 }

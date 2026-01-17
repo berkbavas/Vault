@@ -8,6 +8,7 @@ const FileOperations = {
 
     /**
      * Handle file upload with chunked support
+     * Files are encrypted with their parent folder's key (or masterKey if in root)
      */
     async handleFileUpload(files, masterKey, currentFolderId, getParentKeyFn) {
         if (!files || files.length === 0) return { success: true, count: 0 };
@@ -42,10 +43,10 @@ const FileOperations = {
                 // Encrypt file key with parent key
                 const encryptedFileKey = await CryptoUtils.encryptItemKey(fileKey, parentKey);
 
-                // Encrypt file in chunks to save memory
+                // Encrypt file in chunks with parent key (folder's key or masterKey for root)
                 const encryptedBlob = await CryptoUtils.encryptFileInChunks(
                     file,
-                    masterKey,
+                    parentKey,
                     (processed, total) => {
                         const percent = Math.round((processed / total) * 100);
                         updateLoadingText(`Encrypting ${file.name}: ${percent}%`);
@@ -64,8 +65,8 @@ const FileOperations = {
                     };
                 }
 
-                // Encrypt filename
-                const encryptedName = await CryptoUtils.encryptFilename(file.name, masterKey);
+                // Encrypt filename with parent key
+                const encryptedName = await CryptoUtils.encryptFilename(file.name, parentKey);
 
                 hideLoading();
                 const USE_CHUNKED = encryptedBlob.size > this.CHUNK_SIZE;
@@ -370,10 +371,13 @@ const FileOperations = {
 
     /**
      * Rename file/folder
+     * @param {number} fileId - ID of the file to rename
+     * @param {string} newName - New filename
+     * @param {CryptoKey} parentKey - Parent folder's key (or masterKey for root items)
      */
-    async renameFile(fileId, newName, masterKey) {
-        // Encrypt new name
-        const encryptedName = await CryptoUtils.encryptFilename(newName, masterKey);
+    async renameFile(fileId, newName, parentKey) {
+        // Encrypt new name with parent key
+        const encryptedName = await CryptoUtils.encryptFilename(newName, parentKey);
 
         const response = await API.files.rename(fileId, encryptedName);
         if (!response.success) {

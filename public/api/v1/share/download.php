@@ -1,5 +1,10 @@
 <?php
 
+/**
+ * Download Shared File API
+ * Downloads a file from a shared folder
+ */
+
 require_once __DIR__ . '/../../../../autoload.php';
 
 use App\Core\Bootstrap;
@@ -10,8 +15,8 @@ try {
     Bootstrap::init();
     
     $controller = new ShareController();
-    $controller->createShare();
+    $controller->download();
     
 } catch (Exception $e) {
-    JsonResponse::error('Share failed', 500, ['exception' => $e->getMessage()])->send();
+    JsonResponse::error('Download failed', 500, ['exception' => $e->getMessage()])->send();
 }

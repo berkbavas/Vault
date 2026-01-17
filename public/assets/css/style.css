@@ -1572,3 +1572,247 @@ select:-webkit-autofill {
 	border-radius: 0 !important;
 }
 
+/* =========================
+   SHARE MODAL STYLES
+   ========================= */
+.permission-checkboxes {
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 12px;
+	margin-top: 8px;
+}
+
+.checkbox-label {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	cursor: pointer;
+	padding: 10px 12px;
+	background: rgba(0, 0, 0, 0.2);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.checkbox-label:hover {
+	border-color: rgba(92, 255, 122, 0.4);
+	background: rgba(92, 255, 122, 0.05);
+}
+
+.checkbox-label input[type="checkbox"] {
+	margin: 0;
+}
+
+.share-link-group {
+	display: flex;
+	gap: 10px;
+	margin-top: 8px;
+}
+
+.share-link-group input {
+	flex: 1;
+	background: rgba(0, 0, 0, 0.3);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	padding: 12px 14px;
+	color: var(--text);
+	font-size: 13px;
+	font-family: var(--font-family);
+}
+
+.share-link-group input:focus {
+	outline: none;
+	border-color: rgba(92, 255, 122, 0.5);
+}
+
+/* Share info display on share page */
+.share-info {
+	background: rgba(0, 0, 0, 0.2);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 16px;
+}
+
+.share-info-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 8px 0;
+}
+
+.share-info-row:last-child {
+	border-bottom: none;
+}
+
+.share-info-label {
+	color: var(--muted);
+	font-size: 13px;
+}
+
+.share-info-value {
+	color: var(--text);
+	font-size: 13px;
+	font-weight: 500;
+}
+
+/* Permission badges */
+.permission-badges {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.permission-item {
+	padding: 4px 10px;
+	border-radius: 4px;
+	font-size: 11px;
+	font-weight: 500;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+}
+
+.permission-item.allowed {
+	background: rgba(92, 255, 122, 0.15);
+	color: var(--primary);
+	border: 1px solid rgba(92, 255, 122, 0.3);
+}
+
+.permission-item.denied {
+	background: rgba(255, 77, 77, 0.15);
+	color: var(--danger);
+	border: 1px solid rgba(255, 77, 77, 0.3);
+}
+
+/* Share button in file actions */
+.action-btn.share-btn {
+	color: var(--primary-2);
+}
+
+.action-btn.share-btn:hover {
+	color: var(--primary);
+	background: rgba(92, 255, 122, 0.1);
+}
+
+/* Share page specific styles */
+.share-header {
+	text-align: center;
+	padding: 20px 0;
+	margin-bottom: 20px;
+	border-bottom: 1px solid var(--border);
+}
+
+.share-header h1 {
+	font-size: 24px;
+	color: var(--primary);
+	margin: 0 0 8px 0;
+}
+
+.share-header p {
+	color: var(--muted);
+	margin: 0;
+	font-size: 14px;
+}
+
+/* Password prompt card */
+.password-card {
+	max-width: 400px;
+	margin: 100px auto;
+	background: var(--card-bg);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	padding: 32px;
+	text-align: center;
+}
+
+.password-card h2 {
+	color: var(--primary);
+	margin: 0 0 8px 0;
+	font-size: 20px;
+}
+
+.password-card p {
+	color: var(--muted);
+	margin: 0 0 24px 0;
+	font-size: 14px;
+}
+
+.password-card .form-group {
+	text-align: left;
+	margin-bottom: 20px;
+}
+
+/* Share expired/not found states */
+.share-error-card {
+	max-width: 400px;
+	margin: 100px auto;
+	background: var(--card-bg);
+	border: 1px solid rgba(255, 77, 77, 0.3);
+	border-radius: var(--radius);
+	padding: 32px;
+	text-align: center;
+}
+
+.share-error-card .error-icon {
+	font-size: 48px;
+	margin-bottom: 16px;
+}
+
+.share-error-card h2 {
+	color: var(--danger);
+	margin: 0 0 8px 0;
+	font-size: 20px;
+}
+
+.share-error-card p {
+	color: var(--muted);
+	margin: 0;
+	font-size: 14px;
+}
+
+/* Shared content breadcrumb override */
+.share-breadcrumb {
+	background: rgba(92, 255, 122, 0.05);
+	border: 1px solid rgba(92, 255, 122, 0.15);
+	padding: 10px 16px;
+	border-radius: var(--radius-sm);
+	margin-bottom: 16px;
+}
+
+.share-breadcrumb .breadcrumb-item {
+	color: var(--muted);
+}
+
+.share-breadcrumb .breadcrumb-item.active {
+	color: var(--primary);
+}
+
+.share-permissions {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+}
+
+.checkbox-col {
+	max-width: fit-content;
+}
+
+/* Mobile responsive for permission checkboxes */
+@media (max-width: 480px) {
+	.permission-checkboxes {
+		grid-template-columns: 1fr;
+	}
+	
+	.checkbox-label {
+		padding: 8px 10px;
+		font-size: 13px;
+	}
+	
+	.share-link-group {
+		flex-direction: column;
+	}
+	
+	.share-link-group .btn {
+		width: 100%;
+	}
+}
+

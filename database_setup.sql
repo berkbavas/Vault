@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS files (
 -- ----------------------------------------------------------------------------
 -- File Shares Table
 -- ----------------------------------------------------------------------------
--- Stores share links for encrypted file sharing
+-- Stores share links for encrypted file sharing with password protection
 
 CREATE TABLE IF NOT EXISTS file_shares (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -107,16 +107,35 @@ CREATE TABLE IF NOT EXISTS file_shares (
     
     -- Share access
     token VARCHAR(128) NOT NULL,                     -- Unique share token (URL-safe)
-    encrypted_key VARCHAR(120) NOT NULL,             -- Re-encrypted file key for sharing
+    encrypted_key VARCHAR(120) NOT NULL,             -- File key encrypted with share password
+    
+    -- Password protection (all values are hex-encoded)
+    password_hash VARCHAR(64) NOT NULL,              -- SHA-256 hash for password verification (32 bytes = 64 hex)
+    password_salt VARCHAR(64) NOT NULL,              -- Salt for password hashing (32 bytes = 64 hex)
+    kdf_salt VARCHAR(64) NOT NULL,                   -- Salt for key derivation (32 bytes = 64 hex)
+    
+    -- Permissions
+    can_upload TINYINT(1) UNSIGNED DEFAULT 0,        -- 1 = allow uploads, 0 = read-only
+    can_delete TINYINT(1) UNSIGNED DEFAULT 0,        -- 1 = allow deletion, 0 = no delete
+    can_rename TINYINT(1) UNSIGNED DEFAULT 0,        -- 1 = allow rename, 0 = no rename
+    can_move TINYINT(1) UNSIGNED DEFAULT 0,          -- 1 = allow move, 0 = no move
     
     -- Expiration
     expires_at TIMESTAMP NULL DEFAULT NULL,          -- NULL = never expires
     
     -- Metadata
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    access_count INT UNSIGNED DEFAULT 0,             -- Number of times accessed
+    last_accessed_at TIMESTAMP NULL DEFAULT NULL,    -- Last access time
     
     -- Constraints
     UNIQUE KEY uk_share_token (token),
+    
+    -- Validation
+    CONSTRAINT chk_can_upload CHECK (can_upload IN (0, 1)),
+    CONSTRAINT chk_can_delete CHECK (can_delete IN (0, 1)),
+    CONSTRAINT chk_can_rename CHECK (can_rename IN (0, 1)),
+    CONSTRAINT chk_can_move CHECK (can_move IN (0, 1)),
     
     -- Foreign keys
     CONSTRAINT fk_shares_file FOREIGN KEY (file_id) 
