@@ -21,52 +21,18 @@
 <body>
     <!-- Loading Overlay -->
     <div id="loading-overlay" class="loading-overlay" aria-hidden="true">
-        <div class="loading-card enhanced" role="status" aria-live="polite">
-            <!-- Terminal Header -->
+        <div class="loading-card" role="status" aria-live="polite">
             <div class="loading-terminal-header">
                 <div class="terminal-dots">
                     <span class="dot red"></span>
                     <span class="dot yellow"></span>
                     <span class="dot green"></span>
                 </div>
-                <span class="terminal-title">vault-drive.exe</span>
+                <span class="terminal-title">vault_drive.exe</span>
             </div>
-            
-            <!-- Boot Animation -->
-            <div class="loading-boot-sequence">
-                <div class="boot-logo">
-                    <div class="shield-container">
-                        <i class="fa-solid fa-shield-halved"></i>
-                        <div class="shield-pulse"></div>
-                        <div class="shield-ring"></div>
-                        <div class="shield-ring delay-1"></div>
-                        <div class="shield-ring delay-2"></div>
-                    </div>
-                </div>
-                
-                <div class="boot-title">VAULT DRIVE</div>
-                <div class="boot-subtitle">Zero-Knowledge Secure Storage</div>
-                
-                <!-- Matrix Effect Container -->
-                <div class="loading-matrix" id="loading-matrix"></div>
-                
-                <!-- Progress Indicator -->
-                <div class="boot-progress">
-                    <div class="boot-progress-track">
-                        <div class="boot-progress-fill" id="boot-progress-fill"></div>
-                        <div class="boot-progress-glow"></div>
-                    </div>
-                </div>
-                
-                <!-- Status Text -->
-                <div class="boot-status">
-                    <span class="status-prefix">&gt;</span>
-                    <span id="loading-text" class="loading-text">Initializing secure environment...</span>
-                    <span class="cursor-blink">_</span>
-                </div>
-                
-                <!-- Boot Log -->
-                <div class="boot-log" id="boot-log"></div>
+            <div class="loading-body">
+                <div class="spinner"></div>
+                <span id="loading-text" class="loading-text">Initializing...</span>
             </div>
         </div>
     </div>
