@@ -10,7 +10,8 @@ try {
     Bootstrap::init();
     
     $controller = new StorageController();
-    $controller->list();
+    $userId = $controller->requireAuth();
+    $controller->list($userId);
     
 } catch (Exception $e) {
     JsonResponse::error('Failed to list files', 500, ['exception' => $e->getMessage()])->send();

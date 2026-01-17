@@ -10,7 +10,8 @@ try {
     Bootstrap::init();
     
     $controller = new StorageController();
-    $controller->upload();
+    $userId = $controller->requireAuth();
+    $controller->upload($userId);
     
 } catch (Exception $e) {
     JsonResponse::error('Upload failed', 500, ['exception' => $e->getMessage()])->send();

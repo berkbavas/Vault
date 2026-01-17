@@ -10,7 +10,8 @@ try {
     Bootstrap::init();
     
     $controller = new StorageController();
-    $controller->uploadChunk();
+    $userId = $controller->requireAuth();
+    $controller->uploadChunk($userId);
     
 } catch (Exception $e) {
     JsonResponse::error('Chunk upload failed', 500, ['exception' => $e->getMessage()])->send();

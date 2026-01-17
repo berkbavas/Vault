@@ -9,6 +9,41 @@ use Exception;
 class AuthController extends Controller
 {
     private $userService;
+    private $rules = [
+        'register' => [
+            'username'              => 'required|string|min:3|max:255|alpha_num_dash',
+            'client_salt'           => 'required|string|min:64|max:64|hex',
+            'kdf_salt'              => 'required|string|min:64|max:64|hex',
+            'password_hash'         => 'required|string|min:64|max:64|hex',
+            'encrypted_master_key'  => 'required|string|min:120|max:120|hex',
+        ],
+
+        'login' => [
+            'username'      => 'required|string|min:3|max:255|alpha_num_dash',
+            'password_hash' => 'required|string|min:64|max:64|hex',
+        ],
+
+        'change_password' => [
+            'current_password_hash'     => 'required|string|min:64|max:64|hex',
+            'new_password_hash'         => 'required|string|min:64|max:64|hex',
+            'new_encrypted_master_key'  => 'required|string|min:120|max:120|hex',
+            'new_client_salt'           => 'required|string|min:64|max:64|hex',
+            'new_kdf_salt'              => 'required|string|min:64|max:64|hex',
+        ],
+
+        'get_client_salt' => [
+            'username' => 'required|string|min:3|max:255|alpha_num_dash',
+        ],
+
+        'update_quota' => [
+            'user_id' => 'required|integer',
+            'quota' => 'required|integer|min:0',
+        ],
+
+        'delete_user' => [
+            'user_id' => 'required|integer',
+        ],
+    ];
 
     public function __construct()
     {
@@ -27,35 +62,24 @@ class AuthController extends Controller
                 return $this->error('User registration is disabled', 403)->send();
             }
 
-            $minUsernameLength = $this->config['user']['username_min_length'];
-            $maxUsernameLength = $this->config['user']['username_max_length'];
-
             // Validate input
-            $this->validateJson([
-                'username' => "required|string|min:$minUsernameLength|max:$maxUsernameLength",
-                'client_salt' => 'required|string',
-                'kdf_salt' => 'required|string',
-                'password_hash' => 'required|string',
-                'encrypted_master_key' => 'required|string',
-            ]);
+            $this->validateJson($this->rules['register']);
 
-            $username = $this->request->json('username');
+            $username = trim($this->request->json('username'));
             $clientSalt = $this->request->json('client_salt');
             $kdfSalt = $this->request->json('kdf_salt');
             $passwordHash = $this->request->json(key: 'password_hash');
             $encryptedMasterKey = $this->request->json('encrypted_master_key');
 
-            // Create user with additional security fields
-            $userData = [
-                'username' => trim($username),
-                'client_salt' => $clientSalt,
-                'kdf_salt' => $kdfSalt,
-                'password_hash' => $passwordHash,
-                'encrypted_master_key' => $encryptedMasterKey,
-                'storage_quota' => $this->config['storage']['default_quota']
-            ];
+            $this->userService->createUser(
+                $username,
+                $clientSalt,
+                $kdfSalt,
+                $passwordHash,
+                $encryptedMasterKey
+            );
 
-            $user = $this->userService->create($userData);
+            $user = $this->userService->findByUsername($username);
 
             // Create JWT token
             $token = $this->createJWT([
@@ -68,7 +92,10 @@ class AuthController extends Controller
                     'id' => $user['id'],
                     'username' => $user['username'],
                     'kdf_salt' => $user['kdf_salt'],
-                    'encrypted_master_key' => $user['encrypted_master_key']
+                    'encrypted_master_key' => $user['encrypted_master_key'],
+                    'storage_used' => $user['storage_used'],
+                    'storage_quota' => $user['storage_quota'],
+                    'is_admin' => $user['is_admin'] ?? 0,
                 ],
                 'token' => $token
             ], 'User registered successfully', 201)->send();
@@ -86,11 +113,8 @@ class AuthController extends Controller
     public function getClientSalt()
     {
         try {
-
-            $minUsernameLength = $this->config['user']['username_min_length'];
-            $maxUsernameLength = $this->config['user']['username_max_length'];
-
-            $this->validateJson(['username' => "required|string|min:$minUsernameLength|max:$maxUsernameLength"]);
+            // Validate input
+            $this->validateJson($this->rules['get_client_salt']);
 
             // Get username from query string or request body
             $username = $this->request->json('username');
@@ -119,14 +143,8 @@ class AuthController extends Controller
     {
         try {
 
-            $minUsernameLength = $this->config['user']['username_min_length'];
-            $maxUsernameLength = $this->config['user']['username_max_length'];
-
             // Validate input
-            $this->validateJson([
-                'username' => "required|string|min:$minUsernameLength|max:$maxUsernameLength",
-                'password_hash' => 'required|string',
-            ]);
+            $this->validateJson($this->rules['login']);
 
             $username = $this->request->json('username');
             $passwordHash = $this->request->json('password_hash');
@@ -168,19 +186,15 @@ class AuthController extends Controller
         try {
             $userId = $this->getAuthUserId();
 
-            $this->validateJson([
-                'current_password_hash' => 'required|string',
-                'new_password_hash' => 'required|string',
-                'new_encrypted_master_key' => 'required|string',
-                'new_client_salt' => 'required|string',
-                'new_kdf_salt' => 'required|string',
-            ]);
+            // Validate input
+            $this->validateJson($this->rules['change_password']);
 
             $currentPasswordHash = $this->request->json('current_password_hash');
             $newPasswordHash = $this->request->json('new_password_hash');
             $newEncryptedMasterKey = $this->request->json('new_encrypted_master_key');
             $newClientSalt = $this->request->json('new_client_salt');
             $newKdfSalt = $this->request->json('new_kdf_salt');
+
             $user = $this->userService->changePassword(
                 $userId,
                 $currentPasswordHash,
@@ -238,9 +252,7 @@ class AuthController extends Controller
     {
         try {
             $this->requireAdmin();
-
             $users = $this->userService->getAllUsers();
-
             return $this->success($users, 'Users retrieved successfully')->send();
         } catch (Exception $e) {
             return $this->error($e->getMessage(), 400)->send();
@@ -255,17 +267,10 @@ class AuthController extends Controller
     {
         try {
             $this->requireAdmin();
-
-            $this->validateJson([
-                'user_id' => 'required|integer',
-                'quota' => 'required|integer|min:0',
-            ]);
-
+            $this->validateJson($this->rules['update_quota']);
             $userId = $this->request->json('user_id');
             $quota = $this->request->json('quota');
-
             $this->userService->updateQuota($userId, $quota);
-
             return $this->success(null, 'User quota updated successfully')->send();
         } catch (Exception $e) {
             return $this->error($e->getMessage(), 400)->send();
@@ -279,19 +284,12 @@ class AuthController extends Controller
     {
         try {
             $this->requireAdmin();
-
-            $this->validateJson([
-                'user_id' => 'required|integer',
-            ]);
-
+            $this->validateJson($this->rules['delete_user']);
             $userId = $this->request->json('user_id');
-
             $this->userService->deleteUser($userId);
-
             return $this->success(null, 'User deleted successfully')->send();
         } catch (Exception $e) {
             return $this->error($e->getMessage(), 400)->send();
         }
     }
-
 }

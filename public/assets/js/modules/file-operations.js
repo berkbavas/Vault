@@ -4,6 +4,8 @@
  */
 
 const FileOperations = {
+    CHUNK_SIZE: 10 * 1024 * 1024, // 10MB chunks
+
     /**
      * Handle file upload with chunked support
      */
@@ -16,13 +18,13 @@ const FileOperations = {
 
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
-            
+
             // Check if cancelled
             if (App.uploadProgressState.cancelled) {
-                return { 
-                    success: false, 
-                    cancelled: true, 
-                    successCount, 
+                return {
+                    success: false,
+                    cancelled: true,
+                    successCount,
                     failedCount,
                     message: `Upload cancelled. ${successCount} of ${totalFiles} files uploaded.`
                 };
@@ -66,9 +68,7 @@ const FileOperations = {
                 const encryptedName = await CryptoUtils.encryptFilename(file.name, masterKey);
 
                 hideLoading();
-
-                const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
-                const USE_CHUNKED = encryptedBlob.size > CHUNK_SIZE;
+                const USE_CHUNKED = encryptedBlob.size > this.CHUNK_SIZE;
 
                 // Show progress bar with file count
                 showProgress('upload', file.name, encryptedBlob.size, i + 1, totalFiles);
@@ -81,7 +81,7 @@ const FileOperations = {
                         file.size,
                         encryptedFileKey,
                         currentFolderId,
-                        CHUNK_SIZE,
+                        this.CHUNK_SIZE,
                         file.name
                     );
 
@@ -120,7 +120,7 @@ const FileOperations = {
                 }
 
                 successCount++;
-                
+
                 // Show completion briefly if not the last file
                 if (i < files.length - 1) {
                     document.getElementById('upload-progress-subtitle').textContent = `Complete! (${i + 1}/${totalFiles})`;
@@ -128,7 +128,7 @@ const FileOperations = {
                 } else {
                     completeProgress('upload');
                 }
-                
+
                 showToast(`${file.name} uploaded successfully!`, 'success');
             } catch (fileError) {
                 failedCount++;
@@ -144,7 +144,7 @@ const FileOperations = {
      * Upload file in chunks
      */
     async uploadFileInChunks(encryptedBlob, encryptedFilename, originalSize, encryptedFileKey, parentId, chunkSize) {
-        const uploadId = 'upload_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+        const uploadId = 'upload_' + Date.now() + '_' + Math.random().toString(36);
         const totalSize = encryptedBlob.size;
         const totalChunks = Math.ceil(totalSize / chunkSize);
         let uploadedBytes = 0;

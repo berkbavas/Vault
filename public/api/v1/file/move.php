@@ -10,7 +10,8 @@ try {
     Bootstrap::init();
     
     $controller = new StorageController();
-    $controller->move();
+    $userId = $controller->requireAuth();
+    $controller->move($userId);
     
 } catch (Exception $e) {
     JsonResponse::error('Move failed', 500, ['exception' => $e->getMessage()])->send();

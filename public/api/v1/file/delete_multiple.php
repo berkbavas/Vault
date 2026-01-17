@@ -10,7 +10,8 @@ try {
     Bootstrap::init();
     
     $controller = new StorageController();
-    $controller->deleteMultiple();
+    $userId = $controller->requireAuth();
+    $controller->deleteMultiple($userId);
     
 } catch (Exception $e) {
     JsonResponse::error('Delete failed', 500, ['exception' => $e->getMessage()])->send();

@@ -10,7 +10,8 @@ try {
     Bootstrap::init();
     
     $controller = new StorageController();
-    $controller->share();
+    $userId = $controller->requireAuth();
+    $controller->share($userId);
     
 } catch (Exception $e) {
     JsonResponse::error('Share failed', 500, ['exception' => $e->getMessage()])->send();

@@ -24,25 +24,13 @@ class StorageService
      */
     public function list($userId, $parentId = null)
     {
-        if ($parentId === null) {
-            // Root files
-            $stmt = $this->pdo->prepare("
-                SELECT id, encrypted_name, type, size, original_size, mime_type, encrypted_key, created_at, updated_at 
-                FROM files 
-                WHERE user_id = ? AND parent_id IS NULL 
-                ORDER BY type DESC
-            ");
-            $stmt->execute([$userId]);
-        } else {
-            // Files in specific folder
-            $stmt = $this->pdo->prepare("
-                SELECT id, encrypted_name, type, size, original_size, mime_type, encrypted_key, created_at, updated_at 
-                FROM files 
-                WHERE user_id = ? AND parent_id = ? 
-                ORDER BY type DESC
-            ");
-            $stmt->execute([$userId, $parentId]);
+        $stmt = $this->pdo->prepare("SELECT * FROM files WHERE user_id = :user_id AND parent_id " . ($parentId === null ? "IS NULL" : "= :parent_id"));
+        $params = ['user_id' => $userId];
+        if ($parentId !== null) {
+            $params['parent_id'] = $parentId;
         }
+        $stmt->execute($params);
+
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
@@ -113,22 +101,17 @@ class StorageService
         return $stmt->rowCount() > 0;
     }
 
+
     /**
      * Upload a file
      */
     public function upload($userId, $file, $parentId, $encryptedName, $originalSize, $encryptedKey)
     {
         // Get user folder
-        $stmt = $this->pdo->prepare("SELECT user_folder FROM users WHERE id = ?");
-        $stmt->execute([$userId]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$user || !$user['user_folder']) {
-            throw new Exception('User folder not found');
-        }
-
+        $userService = new UserService($this->pdo);
+        $user = $userService->findById($userId);
         $userFolder = $user['user_folder'];
-        $uploadPath = $this->uploadDir . '/' . $userFolder;
+        $uploadPath = $userService->getUserFolderPath($userFolder);
 
         // Create user directory if it doesn't exist
         if (!file_exists($uploadPath)) {
@@ -152,7 +135,6 @@ class StorageService
             VALUES (?, ?, ?, 'file', ?, ?, ?, 'application/octet-stream', ?)
         ");
         $stmt->execute([$userId, $parentId, $encryptedName, $filename, $fileSize, $originalSize, $encryptedKey]);
-
         $fileId = $this->pdo->lastInsertId();
 
         // Update user storage
@@ -168,6 +150,7 @@ class StorageService
             'type' => 'file'
         ];
     }
+
 
     /**
      * Delete a file or folder
@@ -336,6 +319,7 @@ class StorageService
 
         // Save chunk to disk
         $chunkPath = $chunksDir . '/' . $chunkIndex;
+
         if (file_put_contents($chunkPath, $chunkData) === false) {
             throw new Exception('Failed to save chunk');
         }
@@ -464,12 +448,10 @@ class StorageService
         rmdir($dir);
     }
 
-
-    public function generateShareToken($length = 32)
+    public function generateShareToken($length)
     {
         return bin2hex(random_bytes($length));
     }
-
 
     public function getFileById($fileId, $userId)
     {
@@ -481,15 +463,32 @@ class StorageService
 
     public function createShare($fileId, $encryptedKey, $expiresAt = null)
     {
-        $token = $this->generateShareToken(16);
+        $token = $this->generateShareToken($this->config['security']['share_token_bytes']);
 
         $stmt = $this->pdo->prepare("
             INSERT INTO file_shares (file_id, token, encrypted_key, expires_at) 
             VALUES (?, ?, ?, ?)
         ");
-        
+
         $stmt->execute([$fileId, $token, $encryptedKey, $expiresAt]);
 
         return $token;
+    }
+
+    public function getShareByToken($token)
+    {
+        $stmt = $this->pdo->prepare("SELECT * FROM file_shares WHERE token = ?");
+        $stmt->execute([$token]);
+        $share = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $share;
+    }
+
+    public function getUserIdByFileId($fileId)
+    {
+        $stmt = $this->pdo->prepare("SELECT user_id FROM files WHERE id = ?");
+        $stmt->execute([$fileId]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $result ? $result['user_id'] : null;
     }
 }

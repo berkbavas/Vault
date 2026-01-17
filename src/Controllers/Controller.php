@@ -92,7 +92,7 @@ abstract class Controller
     /**
      * Get authenticated user ID from JWT
      */
-    protected function getAuthUserId(): ?int
+    public function getAuthUserId(): ?int
     {
         $token = $this->request->bearerToken();
 
@@ -113,7 +113,7 @@ abstract class Controller
     /**
      * Require authentication and get user ID
      */
-    protected function requireAuth(): int
+    public function requireAuth(): int
     {
         $userId = $this->getAuthUserId();
         if (!$userId) {
@@ -126,7 +126,7 @@ abstract class Controller
     /**
      * Require admin privileges
      */
-    protected function requireAdmin(): int
+    public function requireAdmin(): int
     {
         $userId = $this->requireAuth();
 
@@ -146,7 +146,7 @@ abstract class Controller
     /**
      * Get authenticated user ID (alias for requireAuth)
      */
-    protected function getUserId(): int
+    public function getUserId(): int
     {
         return $this->requireAuth();
     }

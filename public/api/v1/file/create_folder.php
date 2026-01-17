@@ -10,7 +10,8 @@ try {
     Bootstrap::init();
     
     $controller = new StorageController();
-    $controller->createFolder();
+    $userId = $controller->requireAuth();
+    $controller->createFolder($userId);
     
 } catch (Exception $e) {
     JsonResponse::error('Create folder failed', 500, ['exception' => $e->getMessage()])->send();

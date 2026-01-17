@@ -10,7 +10,8 @@ try {
     Bootstrap::init();
     
     $controller = new StorageController();
-    $controller->download();
+    $userId = $controller->requireAuth();
+    $controller->download($userId);
     
 } catch (Exception $e) {
     JsonResponse::error('Download failed', 500, ['exception' => $e->getMessage()])->send();

@@ -10,7 +10,8 @@ try {
     Bootstrap::init();
     
     $controller = new StorageController();
-    $controller->finalizeUpload();
+    $userId = $controller->requireAuth();
+    $controller->finalizeUpload($userId);
     
 } catch (Exception $e) {
     JsonResponse::error('Upload finalization failed', 500, ['exception' => $e->getMessage()])->send();

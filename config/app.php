@@ -120,11 +120,10 @@ return [
      */
     'security' => [
         // PBKDF2 settings for password hashing
-        'pbkdf2_iterations' => 200000,
+        'pbkdf2_iterations' => 400000,
         'pbkdf2_algorithm' => 'sha256',
         'salt_bytes' => 32, // 256 bits
-        'hash_bytes' => 32, // 256 bits
-        'encrypted_key_bytes' => 60, // 12 bytes nonce + 32 bytes key + 16 bytes tag
+        'pbkdf2_key_length' => 32, // 256 bits
 
         // Session settings
         'session_lifetime' => 86400, // 24 hours
@@ -140,6 +139,8 @@ return [
         'rate_limit_enabled' => true,
         'rate_limit_requests' => 100,
         'rate_limit_period' => 3600, // per hour
+
+        'share_token_bytes' => 64, // 128 characters in hex
     ],
 
     /**

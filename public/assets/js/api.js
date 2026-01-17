@@ -37,11 +37,11 @@ const API = {
         const headers = {
             'Content-Type': contentType
         };
-        
+
         if (this.token) {
             headers['Authorization'] = `Bearer ${this.token}`;
         }
-        
+
         return headers;
     },
 
@@ -124,9 +124,11 @@ const API = {
      */
     files: {
         async list(parentId = null) {
-            const params = parentId ? `?parent_id=${parentId}` : '';
-            return await API.request(`/file/list.php${params}`, {
-                method: 'GET'
+            return await API.request('/file/list.php', {
+                method: 'POST',
+                body: JSON.stringify({
+                    parent_id: parentId
+                })
             });
         },
 
@@ -142,13 +144,13 @@ const API = {
 
             return new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
-                
+
                 xhr.upload.addEventListener('progress', (e) => {
                     if (e.lengthComputable && onProgress) {
                         onProgress(e.loaded, e.total);
                     }
                 });
-                
+
                 xhr.addEventListener('load', () => {
                     try {
                         const response = JSON.parse(xhr.responseText);
@@ -157,10 +159,10 @@ const API = {
                         reject(new Error('Invalid response from server'));
                     }
                 });
-                
+
                 xhr.addEventListener('error', () => reject(new Error('Upload failed')));
                 xhr.addEventListener('abort', () => reject(new Error('Upload aborted')));
-                
+
                 xhr.open('POST', `${API.baseURL}/file/upload.php`);
                 xhr.setRequestHeader('Authorization', `Bearer ${API.token}`);
                 xhr.send(formData);
@@ -202,11 +204,11 @@ const API = {
                     'Authorization': `Bearer ${API.token}`
                 }
             });
-            
+
             if (!response.ok) {
                 throw new Error('Failed to get file size');
             }
-            
+
             return parseInt(response.headers.get('Content-Length'), 10);
         },
 
@@ -227,7 +229,7 @@ const API = {
         async rename(id, newEncryptedName) {
             return await API.request('/file/rename.php', {
                 method: 'POST',
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     id: id,
                     new_encrypted_name: newEncryptedName
                 })
@@ -235,15 +237,15 @@ const API = {
         },
 
         async move(fileId, newParentId = null, newEncryptedKey = null) {
-            const body = { 
+            const body = {
                 id: fileId,
                 new_parent_id: newParentId
             };
-            
+
             if (newEncryptedKey !== null) {
                 body.new_encrypted_key = newEncryptedKey;
             }
-            
+
             return await API.request('/file/move.php', {
                 method: 'POST',
                 body: JSON.stringify(body)
@@ -251,10 +253,10 @@ const API = {
         },
 
         async createFolder(encryptedName, encryptedKey, parentId = null) {
-    
+
             return await API.request('/file/create_folder.php', {
                 method: 'POST',
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     encrypted_name: encryptedName,
                     encrypted_key: encryptedKey,
                     parent_id: parentId
@@ -273,13 +275,13 @@ const API = {
 
             return new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
-                
+
                 xhr.upload.addEventListener('progress', (e) => {
                     if (e.lengthComputable && onProgress) {
                         onProgress(e.loaded, e.total);
                     }
                 });
-                
+
                 xhr.addEventListener('load', () => {
                     try {
                         const response = JSON.parse(xhr.responseText);
@@ -288,10 +290,10 @@ const API = {
                         reject(new Error('Invalid response from server'));
                     }
                 });
-                
+
                 xhr.addEventListener('error', () => reject(new Error('Chunk upload failed')));
                 xhr.addEventListener('abort', () => reject(new Error('Chunk upload aborted')));
-                
+
                 xhr.open('POST', `${API.baseURL}/file/upload_chunk.php`);
                 xhr.setRequestHeader('Authorization', `Bearer ${API.token}`);
                 xhr.send(formData);
@@ -316,7 +318,7 @@ const API = {
         }
     },
 
-    admin : {
+    admin: {
         async listUsers() {
             return await API.request('/admin/list_users.php', {
                 method: 'GET'
@@ -332,7 +334,7 @@ const API = {
                 })
             });
         },
-        
+
         async deleteUser(userId) {
             return await API.request('/admin/delete_user.php', {
                 method: 'POST',

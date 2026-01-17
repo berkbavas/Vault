@@ -10,7 +10,8 @@ try {
     Bootstrap::init();
     
     $controller = new StorageController();
-    $controller->rename();
+    $userId = $controller->requireAuth();
+    $controller->rename($userId);
     
 } catch (Exception $e) {
     JsonResponse::error('Rename failed', 500, ['exception' => $e->getMessage()])->send();
