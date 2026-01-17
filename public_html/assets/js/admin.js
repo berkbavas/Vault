@@ -184,10 +184,7 @@ document.getElementById('edit-quota-form').addEventListener('submit', async (e) 
 
     try {
         showLoading('Updating quota...');
-        const response = await API.admin.updateQuota({
-            user_id: userId,
-            quota: quotaBytes
-        });
+        const response = await API.admin.updateQuota(userId, quotaBytes);
 
         if (response.success) {
             showToast('Quota updated successfully', 'success');

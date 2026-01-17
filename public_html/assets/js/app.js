@@ -21,6 +21,9 @@ const App = {
     selectedFileForMove: null,
     selectedItems: new Set(),
     folderKeyCache: new Map(),
+    // Storage quota tracking
+    storageUsed: 0,
+    storageQuota: 0,
     uploadProgressState: {
         isActive: false,
         startTime: null,
@@ -248,7 +251,9 @@ const App = {
         try {
             const response = await API.auth.me();
             if (response.success) {
-                this.updateQuotaDisplay(response.data.storage_used, response.data.storage_quota);
+                this.storageUsed = parseInt(response.data.storage_used) || 0;
+                this.storageQuota = parseInt(response.data.storage_quota) || 0;
+                this.updateQuotaDisplay(this.storageUsed, this.storageQuota);
             }
         } catch (error) {
             console.error('Failed to load quota:', error);
@@ -256,9 +261,47 @@ const App = {
     },
 
     /**
+     * Get available storage space
+     */
+    getAvailableStorage() {
+        return this.storageQuota - this.storageUsed;
+    },
+
+    /**
+     * Check if there's enough storage for files
+     * @param {number} totalSize - Total size of files to upload in bytes
+     * @returns {object} - { hasSpace: boolean, available: number, required: number }
+     */
+    checkStorageQuota(totalSize) {
+        const available = this.getAvailableStorage();
+        return {
+            hasSpace: available >= totalSize,
+            available: available,
+            required: totalSize,
+            used: this.storageUsed,
+            quota: this.storageQuota
+        };
+    },
+
+    /**
+     * Format bytes to human readable string
+     */
+    formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    },
+
+    /**
      * Update quota display
      */
     updateQuotaDisplay(used, total) {
+        // Update internal state
+        this.storageUsed = used;
+        this.storageQuota = total;
+
         const quotaUsed = document.getElementById('quota-used');
         const quotaTotal = document.getElementById('quota-total');
         const quotaPercentage = document.getElementById('quota-percentage');

@@ -125,6 +125,10 @@ class StorageService
         $userFolder = $user['user_folder'];
         $uploadPath = $userService->getUserFolderPath($userFolder);
 
+        // Check storage quota before upload
+        $fileSize = $file['size'];
+        $userService->validateStorageQuota($userId, $fileSize);
+
         // Create user directory if it doesn't exist
         if (!file_exists($uploadPath)) {
             mkdir($uploadPath, 0755, true);
@@ -385,13 +389,19 @@ class StorageService
         $chunksDir = $this->uploadDir . '/' . $userFolder . '/chunks/' . $uploadId;
         $uploadPath = $this->uploadDir . '/' . $userFolder;
 
-        // Verify all chunks exist
+        // Verify all chunks exist and calculate total size
+        $totalSize = 0;
         for ($i = 0; $i < $totalChunks; $i++) {
             $chunkPath = $chunksDir . '/' . $i;
             if (!file_exists($chunkPath)) {
                 throw new Exception("Missing chunk: $i");
             }
+            $totalSize += filesize($chunkPath);
         }
+
+        // Check storage quota before finalizing upload
+        $userService = new UserService($this->pdo);
+        $userService->validateStorageQuota($userId, $totalSize);
 
         // Generate unique filename for final file
         $filename = uniqid() . '.enc';

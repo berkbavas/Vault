@@ -272,4 +272,53 @@ class UserService
         $stmt->execute(['username' => $username]);
         return $stmt->fetchColumn() > 0;
     }
+
+    /**
+     * Get user's current storage usage and quota
+     */
+    public function getStorageInfo(int $userId): array
+    {
+        $user = $this->findById($userId);
+        if (!$user) {
+            throw new Exception('User not found');
+        }
+
+        return [
+            'storage_used' => (int) $user['storage_used'],
+            'storage_quota' => (int) $user['storage_quota'],
+            'available' => (int) $user['storage_quota'] - (int) $user['storage_used']
+        ];
+    }
+
+    /**
+     * Check if user has enough storage space for a file
+     * @param int $userId User ID
+     * @param int $fileSize File size in bytes
+     * @return bool True if enough space, false otherwise
+     */
+    public function hasEnoughStorage(int $userId, int $fileSize): bool
+    {
+        $storageInfo = $this->getStorageInfo($userId);
+        return $storageInfo['available'] >= $fileSize;
+    }
+
+    /**
+     * Validate storage quota before upload
+     * @throws Exception if quota exceeded
+     */
+    public function validateStorageQuota(int $userId, int $fileSize): void
+    {
+        $storageInfo = $this->getStorageInfo($userId);
+        
+        if ($storageInfo['available'] < $fileSize) {
+            $usedMB = round($storageInfo['storage_used'] / (1024 * 1024), 2);
+            $quotaMB = round($storageInfo['storage_quota'] / (1024 * 1024), 2);
+            $fileSizeMB = round($fileSize / (1024 * 1024), 2);
+            $availableMB = round($storageInfo['available'] / (1024 * 1024), 2);
+            
+            throw new Exception(
+                "Storage quota exceeded. File size: {$fileSizeMB}MB, Available: {$availableMB}MB (Used: {$usedMB}MB / {$quotaMB}MB)"
+            );
+        }
+    }
 }

@@ -13,6 +13,32 @@ const FileOperations = {
     async handleFileUpload(files, masterKey, currentFolderId, getParentKeyFn) {
         if (!files || files.length === 0) return { success: true, count: 0 };
 
+        // Calculate total size of all files
+        let totalSize = 0;
+        for (const file of files) {
+            totalSize += file.size;
+        }
+
+        // Check storage quota before starting upload
+        const quotaCheck = App.checkStorageQuota(totalSize);
+        if (!quotaCheck.hasSpace) {
+            const availableFormatted = App.formatBytes(quotaCheck.available);
+            const requiredFormatted = App.formatBytes(quotaCheck.required);
+            const usedFormatted = App.formatBytes(quotaCheck.used);
+            const quotaFormatted = App.formatBytes(quotaCheck.quota);
+            
+            showToast(
+                `Storage quota exceeded! Required: ${requiredFormatted}, Available: ${availableFormatted} (Used: ${usedFormatted} / ${quotaFormatted})`,
+                'error'
+            );
+            
+            return {
+                success: false,
+                quotaExceeded: true,
+                message: `Not enough storage space. Required: ${requiredFormatted}, Available: ${availableFormatted}`
+            };
+        }
+
         const totalFiles = files.length;
         let successCount = 0;
         let failedCount = 0;
@@ -121,6 +147,9 @@ const FileOperations = {
                 }
 
                 successCount++;
+                
+                // Update local storage tracking after successful upload
+                App.storageUsed += encryptedBlob.size;
 
                 // Show completion briefly if not the last file
                 if (i < files.length - 1) {

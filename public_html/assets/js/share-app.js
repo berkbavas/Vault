@@ -18,6 +18,9 @@ const ShareApp = {
     folderKeyCache: new Map(),
     selectedFileForRename: null,
     selectedFileForMove: null,
+    // Storage quota tracking for share owner
+    storageUsed: 0,
+    storageQuota: 0,
 
     CHUNK_SIZE: 10 * 1024 * 1024, // 10MB chunks
 
@@ -274,6 +277,12 @@ const ShareApp = {
                 showToast(response.message || 'Invalid password', 'error');
                 hideLoading();
                 return;
+            }
+
+            // Store storage quota info from response
+            if (response.data.storage_used !== undefined) {
+                this.storageUsed = parseInt(response.data.storage_used) || 0;
+                this.storageQuota = parseInt(response.data.storage_quota) || 0;
             }
 
             // Derive the key derivation key from password
@@ -873,6 +882,27 @@ const ShareApp = {
             return;
         }
 
+        // Calculate total size of all files
+        let totalSize = 0;
+        for (const file of files) {
+            totalSize += file.size;
+        }
+
+        // Check storage quota before starting upload
+        const available = this.storageQuota - this.storageUsed;
+        if (available < totalSize) {
+            const availableFormatted = this.formatBytes(available);
+            const requiredFormatted = this.formatBytes(totalSize);
+            const usedFormatted = this.formatBytes(this.storageUsed);
+            const quotaFormatted = this.formatBytes(this.storageQuota);
+            
+            showToast(
+                `Storage quota exceeded! Required: ${requiredFormatted}, Available: ${availableFormatted} (Used: ${usedFormatted} / ${quotaFormatted})`,
+                'error'
+            );
+            return;
+        }
+
         const totalFiles = files.length;
         let successCount = 0;
 
@@ -944,6 +974,10 @@ const ShareApp = {
                 }
 
                 successCount++;
+                
+                // Update local storage tracking after successful upload
+                this.storageUsed += encryptedBlob.size;
+                
                 completeProgress('upload');
                 showToast(`${file.name} uploaded successfully!`, 'success');
 
@@ -954,6 +988,17 @@ const ShareApp = {
         }
 
         await this.loadFiles(this.currentFolderId);
+    },
+
+    /**
+     * Format bytes to human readable string
+     */
+    formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
     },
 
     /**

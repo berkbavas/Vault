@@ -197,6 +197,9 @@ class ShareController extends Controller
         try {
             $encryptedKey = $this->shareService->verifyPassword($token, $passwordHash);
             $share = $this->shareService->getShare($token);
+            
+            // Get storage info for the share owner (for quota checking)
+            $storageInfo = $this->shareService->getShareOwnerStorageInfo($token);
 
             return $this->success([
                 'encrypted_key' => $encryptedKey,
@@ -207,6 +210,9 @@ class ShareController extends Controller
                 'can_delete' => (bool) $share['can_delete'],
                 'can_rename' => (bool) $share['can_rename'],
                 'can_move' => (bool) $share['can_move'],
+                'storage_used' => $storageInfo['storage_used'],
+                'storage_quota' => $storageInfo['storage_quota'],
+                'storage_available' => $storageInfo['available'],
             ])->send();
         } catch (Exception $e) {
             return $this->error($e->getMessage(), 401)->send();

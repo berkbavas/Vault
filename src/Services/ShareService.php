@@ -75,7 +75,7 @@ class ShareService
                 fs.id, fs.file_id, fs.password_salt, fs.kdf_salt,
                 fs.can_upload, fs.can_delete, fs.can_rename, fs.can_move,
                 fs.expires_at, fs.created_at,
-                f.type as item_type, f.encrypted_name
+                f.type as item_type, f.encrypted_name, f.user_id
             FROM file_shares fs
             JOIN files f ON fs.file_id = f.id
             WHERE fs.token = ?
@@ -93,6 +93,20 @@ class ShareService
         }
 
         return $share;
+    }
+
+    /**
+     * Get storage quota info for the share owner
+     */
+    public function getShareOwnerStorageInfo($token)
+    {
+        $share = $this->getShareInfo($token);
+        if (!$share) {
+            throw new Exception('Share not found');
+        }
+
+        $userService = new UserService($this->pdo);
+        return $userService->getStorageInfo($share['user_id']);
     }
 
     /**
@@ -340,6 +354,10 @@ class ShareService
         $userFolder = $user['user_folder'];
         $uploadPath = $userService->getUserFolderPath($userFolder);
 
+        // Check storage quota before upload
+        $fileSize = $file['size'];
+        $userService->validateStorageQuota($userId, $fileSize);
+
         // Create user directory if it doesn't exist
         if (!file_exists($uploadPath)) {
             mkdir($uploadPath, 0755, true);
@@ -469,13 +487,19 @@ class ShareService
         $chunksDir = $this->uploadDir . '/' . $userFolder . '/chunks/' . $uploadId;
         $uploadPath = $this->uploadDir . '/' . $userFolder;
 
-        // Verify all chunks exist
+        // Verify all chunks exist and calculate total size
+        $totalSize = 0;
         for ($i = 0; $i < $totalChunks; $i++) {
             $chunkPath = $chunksDir . '/' . $i;
             if (!file_exists($chunkPath)) {
                 throw new Exception("Missing chunk: $i");
             }
+            $totalSize += filesize($chunkPath);
         }
+
+        // Check storage quota before finalizing upload
+        $userService = new UserService($this->pdo);
+        $userService->validateStorageQuota($userId, $totalSize);
 
         // Generate unique filename for final file
         $filename = uniqid() . '.enc';
