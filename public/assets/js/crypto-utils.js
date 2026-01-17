@@ -230,6 +230,9 @@ const CryptoUtils = {
         return this.arrayBufferToHex(decrypted);
     },
 
+    /**
+     * Import master key from hex string
+     */
     async importMasterKey(masterKeyData) {
         const keyBuffer =  this.hexToArrayBuffer(masterKeyData);
         return await crypto.subtle.importKey(
@@ -239,6 +242,14 @@ const CryptoUtils = {
             true,
             ['encrypt', 'decrypt']
         );
+    },
+
+    /**
+     * Export master key to hex string
+     */
+    async exportMasterKeyHex(masterKey) {
+        const keyBuffer = await crypto.subtle.exportKey('raw', masterKey);
+        return this.arrayBufferToHex(keyBuffer);
     },
 
     /**

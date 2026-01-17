@@ -503,6 +503,33 @@
                 <h3><i class="fas fa-share-nodes"></i> Share "<span id="share-file-name"></span>"</h3>
                 <button class="modal-close" onclick="closeShareModal()" aria-label="Close">&times;</button>
             </div>
+            
+            <!-- Existing share info (shown when file is already shared) -->
+            <div id="existing-share-info" class="modal-body hidden">
+                <div class="share-status-box">
+                    <div class="share-status-icon">
+                        <i class="fas fa-link"></i>
+                    </div>
+                    <div class="share-status-details">
+                        <p class="share-status-title">This item is shared</p>
+                        <p class="share-status-expires" id="share-expires-info"></p>
+                    </div>
+                </div>
+                <div class="share-link-group">
+                    <input type="text" id="existing-share-link" readonly>
+                    <button type="button" class="btn btn-secondary" onclick="App.copyExistingShareLink()" title="Copy">
+                        <i class="fas fa-copy"></i>
+                    </button>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeShareModal()">Close</button>
+                    <button type="button" class="btn btn-danger" onclick="App.removeShare()">
+                        <i class="fas fa-unlink"></i> Remove Share
+                    </button>
+                </div>
+            </div>
+            
+            <!-- New share form -->
             <form id="share-form" class="modal-body" onsubmit="event.preventDefault(); App.handleCreateShare();">
                 <div class="field">
                     <input type="password" id="share-password" required placeholder="Password" autocomplete="new-password">
@@ -510,6 +537,11 @@
                 
                 <div class="field">
                     <input type="password" id="share-confirm-password" required placeholder="Confirm password" autocomplete="new-password">
+                </div>
+
+                <div class="field">
+                    <label>Expiration (optional)</label>
+                    <input type="datetime-local" id="share-expires-at" class="input-field">
                 </div>
 
                 <div class="field">
@@ -545,7 +577,7 @@
 
                 <div class="modal-actions">
                     <button type="button" class="btn btn-secondary" onclick="closeShareModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" id="create-share-btn">
                         <i class="fas fa-share-nodes"></i> Create Share
                     </button>
                 </div>

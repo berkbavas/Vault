@@ -67,7 +67,10 @@ const ShareApp = {
             const response = await ShareAPI.getShareInfo(this.token);
 
             if (!response.success) {
-                this.showError('Share Not Found', response.message || 'This share link may be invalid or expired.');
+                const errorMessage = response.message || 'This share link may be invalid or expired.';
+                const isExpired = errorMessage.toLowerCase().includes('expired');
+                const title = isExpired ? 'Share Expired' : 'Share Not Found';
+                this.showError(title, errorMessage);
                 hideLoading();
                 return;
             }
@@ -75,6 +78,14 @@ const ShareApp = {
             this.shareInfo = response.data;
             this.setupPasswordForm();
             this.setupEventListeners();
+            
+            // Try to restore session from storage
+            const restored = await this.tryRestoreSession();
+
+            if (restored) {
+                return; // Session restored, already showing app
+            }
+            
             hideLoading();
 
         } catch (error) {
@@ -85,11 +96,104 @@ const ShareApp = {
     },
 
     /**
+     * Try to restore session from sessionStorage
+     */
+    async tryRestoreSession() {
+        try {
+            const sessionKey = `share_session_${this.token}`;
+            const sessionData = sessionStorage.getItem(sessionKey);
+            
+            if (!sessionData) {
+                return false;
+            }
+            
+            const { passwordHash, shareKeyHex, shareFileId, shareInfoExtra } = JSON.parse(sessionData);
+            
+            if (!passwordHash || !shareKeyHex) {
+                return false;
+            }
+            
+            // Verify the stored password hash is still valid
+            updateLoadingText('Restoring session...');
+            const response = await ShareAPI.verifyPassword(this.token, passwordHash);
+            
+            if (!response.success) {
+                // Invalid session, clear it
+                this.clearSession();
+                return false;
+            }
+            
+            // Restore session state
+            this.passwordHash = passwordHash;
+            this.shareKey = await CryptoUtils.importMasterKey(shareKeyHex);
+            this.shareFileId = shareFileId || response.data.file_id;
+            this.shareInfo = { ...this.shareInfo, ...shareInfoExtra, ...response.data };
+            
+            // Cache the share folder key
+            this.folderKeyCache.set(this.shareFileId, this.shareKey);
+            
+            // Show the app
+            updateLoadingText('Loading files...');
+
+            if (this.shareInfo.item_type === 'folder') {
+                await this.loadFiles();
+                this.showApp();
+            } else {
+                this.showSingleFileView();
+            }
+
+            hideLoading();
+            return true;
+            
+        } catch (error) {
+            console.error('Session restore error:', error);
+            this.clearSession();
+            return false;
+        }
+    },
+
+    /**
+     * Save session to sessionStorage
+     */
+    async saveSession() {
+        try {
+            const sessionKey = `share_session_${this.token}`;
+            const shareKeyHex = await CryptoUtils.exportMasterKeyHex(this.shareKey);
+            
+            const sessionData = {
+                passwordHash: this.passwordHash,
+                shareKeyHex: shareKeyHex,
+                shareFileId: this.shareFileId,
+                shareInfoExtra: {
+                    item_type: this.shareInfo.item_type,
+                    can_upload: this.shareInfo.can_upload,
+                    can_delete: this.shareInfo.can_delete,
+                    can_rename: this.shareInfo.can_rename,
+                    can_move: this.shareInfo.can_move
+                }
+            };
+            
+            sessionStorage.setItem(sessionKey, JSON.stringify(sessionData));
+        } catch (error) {
+            console.error('Failed to save session:', error);
+        }
+    },
+
+    /**
+     * Clear session from sessionStorage
+     */
+    clearSession() {
+        const sessionKey = `share_session_${this.token}`;
+        sessionStorage.removeItem(sessionKey);
+    },
+
+    /**
      * Show error state
      */
     showError(title, message) {
         document.getElementById('password-form-container').classList.add('hidden');
         document.getElementById('error-container').classList.remove('hidden');
+        document.getElementById('error-container').classList.add('active');
         document.getElementById('error-title').textContent = title;
         document.getElementById('error-message').textContent = message;
     },
@@ -189,6 +293,9 @@ const ShareApp = {
             // Cache the share folder key
             this.folderKeyCache.set(this.shareFileId, this.shareKey);
 
+            // Save session for page refresh
+            await this.saveSession();
+
             // Show the app
             updateLoadingText('Loading files...');
 
@@ -275,7 +382,14 @@ const ShareApp = {
 
         if (expiresEl) {
             if (this.shareInfo.expires_at) {
-                expiresEl.textContent = formatDate(this.shareInfo.expires_at);
+                const expiresDate = new Date(this.shareInfo.expires_at);
+                const now = new Date();
+                if (expiresDate < now) {
+                    expiresEl.textContent = 'Expired';
+                    expiresEl.style.color = 'var(--danger)';
+                } else {
+                    expiresEl.textContent = expiresDate.toLocaleString();
+                }
             } else {
                 expiresEl.textContent = 'Never';
             }

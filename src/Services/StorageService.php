@@ -20,17 +20,29 @@ class StorageService
     }
 
     /**
-     * List files in a folder
+     * List files in a folder with share info
      */
     public function list($userId, $parentId = null)
     {
-        $stmt = $this->pdo->prepare("SELECT * FROM files WHERE user_id = :user_id AND parent_id " . ($parentId === null ? "IS NULL" : "= :parent_id"));
+        $sql = "
+            SELECT f.*, 
+                   s.id as share_id, 
+                   s.token as share_token,
+                   s.expires_at as share_expires_at,
+                   s.can_upload as share_can_upload,
+                   s.can_delete as share_can_delete,
+                   s.can_rename as share_can_rename,
+                   s.can_move as share_can_move
+            FROM files f
+            LEFT JOIN file_shares s ON f.id = s.file_id
+            WHERE f.user_id = :user_id AND f.parent_id " . ($parentId === null ? "IS NULL" : "= :parent_id");
+        
+        $stmt = $this->pdo->prepare($sql);
         $params = ['user_id' => $userId];
         if ($parentId !== null) {
             $params['parent_id'] = $parentId;
         }
         $stmt->execute($params);
-
 
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

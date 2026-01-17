@@ -511,9 +511,14 @@ const App = {
             iconClass = iconData.icon;
             colorClass = iconData.color;
         }
+        
+        // Show share indicator if file is shared
+        const shareIndicator = file.share_id ? '<i class="fas fa-link share-indicator" title="Shared"></i>' : '';
+        
         nameDiv.innerHTML = `
             <i class="fas ${iconClass} file-icon ${colorClass}"></i>
             <span>${escapeHtml(displayName)}</span>
+            ${shareIndicator}
         `;
         nameTd.appendChild(nameDiv);
         tr.appendChild(nameTd);
@@ -583,6 +588,7 @@ const App = {
         }
         const size = file.type === 'folder' ? '' : formatFileSize(file.original_size);
         const date = formatDate(file.created_at);
+        const shareIndicator = file.share_id ? '<i class="fas fa-link share-indicator" title="Shared"></i>' : '';
 
         card.innerHTML = `
             <div class="file-card-header">
@@ -593,7 +599,7 @@ const App = {
                 <div class="file-card-icon ${colorClass}">
                     <i class="fas ${iconClass}"></i>
                 </div>
-                <div class="file-card-name">${escapeHtml(displayName)}</div>
+                <div class="file-card-name">${escapeHtml(displayName)} ${shareIndicator}</div>
                 <div class="file-card-meta">
                     ${file.type === 'file' ? `<span>${size}</span>` : '<span>Folder</span>'}
                 </div>
@@ -1012,16 +1018,103 @@ const App = {
      * Show share modal
      */
     showShareModal(fileId, fileName, fileType) {
-        this.selectedFileForShare = { id: fileId, name: fileName, type: fileType };
+        const file = this.files.find(f => f.id === fileId);
+        this.selectedFileForShare = { 
+            id: fileId, 
+            name: fileName, 
+            type: fileType,
+            shareId: file?.share_id || null,
+            shareToken: file?.share_token || null,
+            shareExpiresAt: file?.share_expires_at || null
+        };
+        
         document.getElementById('share-file-name').textContent = fileName;
-        document.getElementById('share-password').value = '';
-        document.getElementById('share-confirm-password').value = '';
-        document.getElementById('share-can-upload').checked = false;
-        document.getElementById('share-can-delete').checked = false;
-        document.getElementById('share-can-rename').checked = false;
-        document.getElementById('share-can-move').checked = false;
-        document.getElementById('share-link-container').classList.add('hidden');
+        
+        // Check if already shared
+        if (file && file.share_id) {
+            // Show existing share info
+            document.getElementById('share-form').classList.add('hidden');
+            document.getElementById('existing-share-info').classList.remove('hidden');
+            
+            const shareUrl = window.location.origin + '/vault-drive/public/share.php?token=' + file.share_token;
+            document.getElementById('existing-share-link').value = shareUrl;
+            
+            // Show expiration info
+            const expiresInfo = document.getElementById('share-expires-info');
+            if (file.share_expires_at) {
+                const expiresDate = new Date(file.share_expires_at);
+                const now = new Date();
+                if (expiresDate < now) {
+                    expiresInfo.textContent = 'Expired on ' + expiresDate.toLocaleString();
+                    expiresInfo.style.color = 'var(--danger)';
+                } else {
+                    expiresInfo.textContent = 'Expires on ' + expiresDate.toLocaleString();
+                    expiresInfo.style.color = 'var(--warn)';
+                }
+            } else {
+                expiresInfo.textContent = 'No expiration';
+                expiresInfo.style.color = 'var(--muted)';
+            }
+        } else {
+            // Show create share form
+            document.getElementById('existing-share-info').classList.add('hidden');
+            document.getElementById('share-form').classList.remove('hidden');
+            document.getElementById('share-password').value = '';
+            document.getElementById('share-confirm-password').value = '';
+            document.getElementById('share-expires-at').value = '';
+            document.getElementById('share-can-upload').checked = false;
+            document.getElementById('share-can-delete').checked = false;
+            document.getElementById('share-can-rename').checked = false;
+            document.getElementById('share-can-move').checked = false;
+            document.getElementById('share-link-container').classList.add('hidden');
+            document.getElementById('create-share-btn').classList.remove('hidden');
+        }
+        
         document.getElementById('share-modal').classList.remove('hidden');
+    },
+
+    /**
+     * Copy existing share link
+     */
+    copyExistingShareLink() {
+        const input = document.getElementById('existing-share-link');
+        input.select();
+        document.execCommand('copy');
+        showToast('Link copied to clipboard!', 'success');
+    },
+
+    /**
+     * Remove share
+     */
+    async removeShare() {
+        if (!this.selectedFileForShare || !this.selectedFileForShare.shareId) {
+            showToast('No share selected', 'error');
+            return;
+        }
+
+        if (!confirm('Are you sure you want to remove this share? The link will no longer work.')) {
+            return;
+        }
+
+        try {
+            showLoading('Removing share...');
+            
+            const response = await API.files.deleteShare(this.selectedFileForShare.shareId);
+            
+            if (!response.success) {
+                throw new Error(response.message || 'Failed to remove share');
+            }
+
+            closeShareModal();
+            showToast('Share removed successfully!', 'success');
+            await this.loadFiles(this.currentFolderId);
+            hideLoading();
+
+        } catch (error) {
+            console.error('Remove share error:', error);
+            showToast('Failed to remove share: ' + error.message, 'error');
+            hideLoading();
+        }
     },
 
     /**
@@ -1082,6 +1175,10 @@ const App = {
                 can_move: document.getElementById('share-can-move').checked ? 1 : 0
             };
 
+            // Get expiration date
+            const expiresAtInput = document.getElementById('share-expires-at').value;
+            const expiresAt = expiresAtInput ? new Date(expiresAtInput).toISOString() : null;
+
             // Create share on server
             const response = await API.files.createShare(
                 this.selectedFileForShare.id,
@@ -1089,7 +1186,8 @@ const App = {
                 passwordHash,
                 CryptoUtils.arrayBufferToHex(passwordSalt),
                 CryptoUtils.arrayBufferToHex(kdfSalt),
-                permissions
+                permissions,
+                expiresAt
             );
 
             if (!response.success) {
@@ -1100,7 +1198,11 @@ const App = {
             const shareUrl = response.data.share_url || (window.location.origin + '/vault-drive/public/share.php?token=' + response.data.token);
             document.getElementById('share-link-input').value = shareUrl;
             document.getElementById('share-link-container').classList.remove('hidden');
+            document.getElementById('create-share-btn').classList.add('hidden');
 
+            // Reload files to update share status
+            await this.loadFiles(this.currentFolderId);
+            
             hideLoading();
             showToast('Share created successfully!', 'success');
 

@@ -197,11 +197,14 @@
                 </form>
             </div>
 
-            <div id="error-container" class="auth-form hidden">
+            <div id="error-container" class="auth-form">
                 <div class="empty-state">
                     <div class="empty-icon"><i class="fa-solid fa-circle-exclamation"></i></div>
                     <div class="empty-title" id="error-title">Share Not Found</div>
                     <div class="empty-subtitle" id="error-message">This share link may be invalid or expired.</div>
+                    <a href="index.php" class="btn btn-primary" style="margin-top: 20px;">
+                        <i class="fas fa-home"></i> Go to Home
+                    </a>
                 </div>
             </div>
 

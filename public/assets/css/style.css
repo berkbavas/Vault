@@ -98,6 +98,7 @@ body::before {
 	border: 1px solid rgba(92, 255, 122, 0.3);
 	border-radius: var(--radius);
 	overflow: hidden;
+	min-width: 320px;
 	box-shadow: 
 		var(--shadow-lg),
 		0 0 40px rgba(92, 255, 122, 0.1);
@@ -1651,7 +1652,7 @@ select:-webkit-autofill {
 
 .share-info-value {
 	color: var(--text);
-	font-size: 13px;
+	font-size: 12px;
 	font-weight: 500;
 }
 
@@ -1814,5 +1815,71 @@ select:-webkit-autofill {
 	.share-link-group .btn {
 		width: 100%;
 	}
+}
+
+/* Share indicator icon */
+.share-indicator {
+	color: var(--primary);
+	font-size: 11px;
+	margin-left: 6px;
+	opacity: 0.8;
+}
+
+.share-indicator:hover {
+	opacity: 1;
+}
+
+/* Share status box (for existing shares) */
+.share-status-box {
+	display: flex;
+	align-items: center;
+	gap: 16px;
+	padding: 16px;
+	background: rgba(92, 255, 122, 0.08);
+	border: 1px solid rgba(92, 255, 122, 0.2);
+	border-radius: var(--radius-sm);
+	margin-bottom: 16px;
+}
+
+.share-status-icon {
+	font-size: 24px;
+	color: var(--primary);
+}
+
+.share-status-details {
+	flex: 1;
+}
+
+.share-status-title {
+	margin: 0 0 4px 0;
+	font-weight: 600;
+	color: var(--text);
+}
+
+.share-status-expires {
+	margin: 0;
+	font-size: 13px;
+	color: var(--muted);
+}
+
+/* Datetime input styling */
+input[type="datetime-local"] {
+	background: var(--panel);
+	border: 1px solid var(--border);
+	border-radius: var(--radius-sm);
+	color: var(--text);
+	padding: 10px 12px;
+	width: 100%;
+	font-size: 14px;
+}
+
+input[type="datetime-local"]:focus {
+	outline: none;
+	border-color: var(--primary);
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+	filter: invert(1);
+	cursor: pointer;
 }
 
