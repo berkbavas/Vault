@@ -491,4 +491,62 @@ class StorageService
 
         return $result ? $result['user_id'] : null;
     }
+
+    public function getUserIdByShareToken($token)
+    {
+        $stmt = $this->pdo->prepare("
+            SELECT f.user_id 
+            FROM file_shares fs 
+            JOIN files f ON fs.file_id = f.id 
+            WHERE fs.token = ?
+        ");
+        $stmt->execute([$token]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $result ? $result['user_id'] : null;
+    }
+
+    public function validateShareToken($token, $fileId)
+    {
+        $stmt = $this->pdo->prepare("SELECT * FROM file_shares WHERE token = ?");
+        $stmt->execute([$token]);
+        $share = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$share) {
+            throw new Exception('Invalid share token');
+        }
+
+        if ($share['expires_at'] !== null && strtotime($share['expires_at']) < time()) {
+            throw new Exception('Share token has expired');
+        }
+
+        // Verify that the share corresponds to the requested file
+        if ($this->isParentOf($share['file_id'], $fileId) === false && $share['file_id'] != $fileId) {
+            throw new Exception('Share token does not match the requested file');
+        }
+
+        return $share;
+    }
+
+
+    public function isParentOf($parentId, $childId)
+    {
+        $currentId = $childId;
+
+        while (true) {
+            $stmt = $this->pdo->prepare("SELECT parent_id FROM files WHERE id = ?");
+            $stmt->execute([$currentId]);
+            $result = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$result || $result['parent_id'] === null) {
+                return false;
+            }
+
+            if ($result['parent_id'] == $parentId) {
+                return true;
+            }
+
+            $currentId = $result['parent_id'];
+        }
+    }
 }
